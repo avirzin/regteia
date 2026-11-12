@@ -13,6 +13,7 @@ from regteia_query import (
     Leitor,
     NormaNaoEncontrada,
     buscar,
+    dispositivo,
     estatisticas,
     exportar_grafo,
     norma,
@@ -20,7 +21,7 @@ from regteia_query import (
     relacoes,
     versao_dados,
 )
-from regteia_query.modelos import Estatisticas, NormaDetalhe, ResultadoBusca, Subgrafo
+from regteia_query.modelos import DispositivoDetalhe, Estatisticas, NormaDetalhe, ResultadoBusca, Subgrafo
 from regteia_query.relacoes import PROFUNDIDADE_MAX
 
 from . import arrow
@@ -79,6 +80,16 @@ def create_app(leitor: Callable[[], Leitor] = Leitor.do_ambiente, web_dist: Path
             return norma(db(), ref, limite=limite)
         except NormaNaoEncontrada as e:
             raise nao_encontrada(e) from None
+
+    @app.get("/api/dispositivos/{ref:path}")
+    def get_dispositivo(ref: str) -> DispositivoDetalhe:
+        """One article, annex or item: `bcb:resolucao-bcb:520#art-88` (`#` as %23) or `Res. BCB 520, art. 88`."""
+        try:
+            return dispositivo(db(), ref)
+        except NormaNaoEncontrada as e:
+            raise nao_encontrada(e) from None
+        except ValueError as e:
+            raise HTTPException(422, {"erro": str(e)}) from None
 
     @app.get("/api/buscar")
     def get_buscar(

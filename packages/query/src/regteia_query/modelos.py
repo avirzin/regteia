@@ -52,16 +52,46 @@ class GrupoRelacoes(BaseModel):
     itens: list[Vizinho]  # most recent first, capped
 
 
+class DispositivoResumo(BaseModel):
+    id: str
+    tipo: str  # preambulo | artigo | item | anexo | texto
+    rotulo: str
+    revogado: bool = False
+    contexto: str | None = None
+
+
 class NormaDetalhe(BaseModel):
     norma: NormaResumo
     relacoes: list[GrupoRelacoes]
     notas: list[str]  # caveats the reader must see (revoked, consolidated text, OCR, future amendments...)
+    divisao: str | None = None  # artigos | itens | texto | vazio; None for norms outside the corpus
+    sumario: list[DispositivoResumo] = Field(default_factory=list)  # the norm's Dispositivos, in order
     aviso: str = AVISO
+
+
+class DispositivoDetalhe(BaseModel):
+    norma: NormaResumo
+    dispositivo: DispositivoResumo
+    texto: str  # latest published wording (struck-through parts removed)
+    redacoes_anteriores: list[str] = Field(default_factory=list)  # superseded wording, struck through upstream
+    anterior: DispositivoResumo | None = None
+    proximo: DispositivoResumo | None = None
+    notas: list[str]
+    aviso: str = AVISO
+
+
+class Trecho(BaseModel):
+    """A Dispositivo that matched a search, with a short excerpt around the match."""
+
+    dispositivo: DispositivoResumo
+    trecho: str
+    score: float
 
 
 class ItemBusca(BaseModel):
     norma: NormaResumo
     score: float
+    trechos: list[Trecho] = Field(default_factory=list)  # best-matching Dispositivos; empty for title/ementa hits
 
 
 class ResultadoBusca(BaseModel):
@@ -135,6 +165,17 @@ class NaoResolvidoContagem(BaseModel):
     ocorrencias: int
 
 
+class DispositivoContagem(BaseModel):
+    acervo: str
+    serie: str
+    divisao: str  # artigos | itens | texto | vazio (or "?" before the first split)
+    normas: int
+    dispositivos: int
+    artigos: int
+    revogados: int
+    com_redacao_anterior: int
+
+
 class Estatisticas(BaseModel):
     normas: int  # file-backed
     stubs: int  # edge endpoints outside our corpora
@@ -151,6 +192,12 @@ class Estatisticas(BaseModel):
     arestas_detalhe: list[ArestaContagem]
     stubs_por_prefixo: dict[str, int]
     nao_resolvidos_detalhe: list[NaoResolvidoContagem]
+    dispositivos: int
+    dispositivos_por_tipo: dict[str, int]
+    normas_por_divisao: dict[str, int]  # how many norms were split by articles, items, kept whole, or had no text
+    dispositivos_revogados: int
+    dispositivos_com_redacao_anterior: int
+    dispositivos_detalhe: list[DispositivoContagem]
     falhas_atualizacoes: int | None  # None until the `atualizacoes` parser exists (roadmap step 7)
     ingestoes: list[Ingestao]
     aviso: str = AVISO

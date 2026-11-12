@@ -1,8 +1,18 @@
 {
   "app": {
-    "nav": { "visaoGeral": "Overview", "estatisticas": "Statistics" },
-    "tema": { "botao": "Theme", "rotulo": "Toggle light/dark theme" },
-    "idioma": { "grupo": "Language", "pt-BR": "Português (Brasil)", "en": "English" },
+    "nav": {
+      "visaoGeral": "Overview",
+      "estatisticas": "Statistics"
+    },
+    "tema": {
+      "botao": "Theme",
+      "rotulo": "Toggle light/dark theme"
+    },
+    "idioma": {
+      "grupo": "Language",
+      "pt-BR": "Português (Brasil)",
+      "en": "English"
+    },
     "aviso": "Automated conversion, for information only. It does not replace the Diário Oficial da União or the official BCB and CVM portals; always check the official source linked."
   },
   "graficos": {
@@ -73,11 +83,17 @@
     "decadaFinal": "Last decade",
     "decadaAte": "to",
     "decada": "{d}s",
-    "incluirComunicados": "Include notices (comunicados)"
+    "incluirComunicados": "Include notices (comunicados)",
+    "painelDispositivos": "Provisions: {n}",
+    "painelArtigos": "{n} articles",
+    "painelRevogados": "{n} revoked"
   },
   "est": {
     "erro": "Could not load the statistics: {erro}",
-    "acervo": { "titulo": "Corpus", "sub": "Norms with a file in the normas-bcb and normas-cvm corpora." },
+    "acervo": {
+      "titulo": "Corpus",
+      "sub": "Norms with a file in the normas-bcb and normas-cvm corpora."
+    },
     "kpi": {
       "normas": "norms",
       "vigentes": "in force",
@@ -88,8 +104,15 @@
       "naoResolvidos": "unresolved references",
       "ocr": "texts obtained by OCR"
     },
-    "estado": { "vigente": "In force", "alterada": "Amended", "revogada": "Revoked" },
-    "orgao": { "titulo": "Status by issuer", "sub": "Current status of each norm, according to the corpus graph." },
+    "estado": {
+      "vigente": "In force",
+      "alterada": "Amended",
+      "revogada": "Revoked"
+    },
+    "orgao": {
+      "titulo": "Status by issuer",
+      "sub": "Current status of each norm, according to the corpus graph."
+    },
     "serie": {
       "titulo": "Norms by series",
       "sub": "The 15 largest series. BCB comunicados (notices) are mostly auction announcements.",
@@ -97,7 +120,11 @@
       "extra": "in force {v} · amended {a} · revoked {r}",
       "cabecalho": "Series"
     },
-    "decada": { "titulo": "Norms by decade", "sub": "By each norm's date. All issuers.", "cabecalho": "Decade" },
+    "decada": {
+      "titulo": "Norms by decade",
+      "sub": "By each norm's date. All issuers.",
+      "cabecalho": "Decade"
+    },
     "relacao": {
       "titulo": "Relations by type",
       "sub": "{com} of {total} relations have a start date (“desde”).",
@@ -150,6 +177,33 @@
       "arquivos": "Files",
       "semParser": "Amendment (atualizacoes) parser failures: the parser doesn't exist yet (roadmap, step 7).",
       "falhas": "Amendment (atualizacoes) parser failures: {n}"
+    },
+    "dispositivos": {
+      "titulo": "Split into provisions",
+      "sub": "Each norm is split into articles (paragraphs, incisos and alíneas stay inside), annexes and preamble; old norms without articles, by items (I, II…); the rest stays as whole text, still searchable.",
+      "kpiDispositivos": "provisions",
+      "kpiArtigos": "articles",
+      "kpiRevogados": "revoked articles",
+      "kpiAnteriores": "with struck-through earlier wording",
+      "porDivisao": "Norms by how they were split",
+      "porTipo": "Provisions by type",
+      "cabecalhoDivisao": "Split",
+      "cabecalhoTipo": "Type",
+      "valor": "Provisions",
+      "divisao": {
+        "artigos": "By articles",
+        "itens": "By items (old norms)",
+        "texto": "Whole text",
+        "vazio": "No text on the portal",
+        "?": "Not split yet"
+      },
+      "tipo": {
+        "artigo": "Article",
+        "texto": "Whole text",
+        "item": "Item",
+        "preambulo": "Preamble",
+        "anexo": "Annex"
+      }
     }
   }
 }

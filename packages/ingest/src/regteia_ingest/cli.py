@@ -52,7 +52,8 @@ def main(argv: list[str] | None = None) -> int:
     with _driver(settings) as driver:
         if args.cmd == "status":
             for up in upstreams:
-                print(f"{up.name:12} {'enabled ' if up.enabled else 'disabled'} {writer.last_sha(driver, up.name)}")
+                sha, divisao = writer.ultima(driver, up.name)
+                print(f"{up.name:12} {'enabled ' if up.enabled else 'disabled'} {sha}  splitter v{divisao}")
             return 0
         migrate(driver, settings.migrations_dir)
         if args.cmd == "migrate":

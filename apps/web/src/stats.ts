@@ -118,6 +118,38 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
   }))
   graficos.push(() => barras(nr, linhasNr, { rotuloLargura: 260, cabecalho: [t('est.naoResolvidos.cabecalho'), t('est.naoResolvidos.valor')] }))
 
+  const [cDisp, disp] = cartao(t('est.dispositivos.titulo'), t('est.dispositivos.sub'), true)
+  raiz.append(cDisp)
+  const kpisDisp = el('div', { class: 'kpis' })
+  kpisDisp.append(
+    kpi(t('est.dispositivos.kpiDispositivos'), e.dispositivos),
+    kpi(t('est.dispositivos.kpiArtigos'), e.dispositivos_por_tipo.artigo ?? 0),
+    kpi(t('est.dispositivos.kpiRevogados'), e.dispositivos_revogados),
+    kpi(t('est.dispositivos.kpiAnteriores'), e.dispositivos_com_redacao_anterior),
+  )
+  const grade = el('div', { class: 'dupla' })
+  const [divA, divB] = [el('div'), el('div')]
+  grade.append(divA, divB)
+  disp.append(kpisDisp, grade)
+  const linhasDiv = Object.entries(e.normas_por_divisao).map(([k, v]) => ({
+    rotulo: tDinamico(`est.dispositivos.divisao.${k}`, k),
+    valor: v,
+  }))
+  const linhasTipo = Object.entries(e.dispositivos_por_tipo).map(([k, v]) => ({
+    rotulo: tDinamico(`est.dispositivos.tipo.${k}`, k),
+    valor: v,
+  }))
+  graficos.push(() => {
+    divA.replaceChildren(el('h3', {}, t('est.dispositivos.porDivisao')), el('div'))
+    divB.replaceChildren(el('h3', {}, t('est.dispositivos.porTipo')), el('div'))
+    barras(divA.lastElementChild as HTMLElement, linhasDiv, {
+      cabecalho: [t('est.dispositivos.cabecalhoDivisao'), t('graficos.normas')],
+    })
+    barras(divB.lastElementChild as HTMLElement, linhasTipo, {
+      cabecalho: [t('est.dispositivos.cabecalhoTipo'), t('est.dispositivos.valor')],
+    })
+  })
+
   const [cIng, ing] = cartao(t('est.ingestao.titulo'), t('est.ingestao.sub'), true)
   raiz.append(cIng)
   ing.append(

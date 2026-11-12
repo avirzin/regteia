@@ -120,3 +120,49 @@ def candidatos(ref: str) -> list[str]:
 def escapar_lucene(texto: str) -> str:
     """Make free text safe for the full-text index (no query syntax)."""
     return _LUCENE_SPECIAL.sub(r"\\\1", texto).strip()
+
+
+# "art. 88", "artigo 90-A", "item III", "anexo I", "anexo I, art. 2", "preâmbulo"
+_DISP = (
+    r"(?:anexo(?:\s+(?P<anx>[ivxlc]+|\d+|unico))?(?:\s*,?\s*(?=art))?)?"
+    r"(?:art(?:igo)?s?\s*\.?\s*(?P<art>\d+)\s*(?:o\b)?(?:\s*-\s*(?P<suf>[a-z]{1,2})\b)?"
+    r"|item\s+(?P<item>[ivxlc]+)|(?P<pre>preambulo))?"
+)
+_DISP_FIM = re.compile(rf"^(?P<norma>.+?)\s*,?\s+(?P<d>{_DISP})\s*$")
+_DISP_INICIO = re.compile(rf"^(?P<d>{_DISP})\s*,?\s+(?:d[oa]s?|,)\s+(?P<norma>.+)$")
+
+
+def _chave(m: re.Match[str]) -> str | None:
+    if not m["d"].strip():
+        return None
+    if m["pre"]:
+        return "preambulo"
+    anexo = None
+    if "anexo" in m["d"]:
+        anexo = "anexo" if not m["anx"] or m["anx"] == "unico" else f"anexo-{m['anx']}"
+    if m["art"]:
+        art = f"art-{int(m['art'])}" + (f"-{m['suf']}" if m["suf"] else "")
+        return f"{anexo}/{art}" if anexo else art
+    if m["item"]:
+        return f"item-{m['item']}"
+    return anexo
+
+
+def separar_dispositivo(ref: str) -> tuple[str, str | None]:
+    """Split a typed reference into (norm reference, Dispositivo key or None).
+
+    "bcb:resolucao-bcb:520#art-88" -> ("bcb:resolucao-bcb:520", "art-88")
+    "Resolução BCB 520, art. 88" -> ("resolucao bcb 520", "art-88")
+    "art. 2º do Anexo I da Resolução CMN 4.966" is not supported; "Resolução CMN 4.966, anexo I, art. 2" is.
+    """
+    ref = ref.strip()
+    if "#" in ref:
+        norma, _, chave = ref.partition("#")
+        return norma.strip(), chave.strip().lower() or None
+    t = normalizar(ref).rstrip(" .;").replace(",", " , ")
+    t = re.sub(r"\s+", " ", t)
+    for padrao in (_DISP_INICIO, _DISP_FIM):
+        m = padrao.match(t)
+        if m and (chave := _chave(m)):
+            return m["norma"].strip(" ,"), chave
+    return ref, None

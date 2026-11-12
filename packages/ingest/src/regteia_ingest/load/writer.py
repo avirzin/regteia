@@ -9,10 +9,12 @@ from typing import Any
 from neo4j import Driver, ManagedTransaction
 from regteia_schema import NaoResolvidoAlvo, prefixo
 
+from ..parse import dispositivos
 from ..sources.normas_grafo import Plano
 
 log = logging.getLogger(__name__)
 BATCH = 5_000
+TEXTO_POR_LOTE = 8_000_000  # characters of Dispositivo text per write transaction
 _DIR = Path(__file__).parent
 
 
@@ -52,9 +54,45 @@ def _expect(name: str, got: int, want: int) -> None:
         raise LoadError(f"{name}: expected {want} rows to be written, got {got}")
 
 
-def last_sha(driver: Driver, fonte: str) -> str | None:
+def ultima(driver: Driver, fonte: str) -> tuple[str | None, int | None]:
+    """(last loaded SHA, splitter version used) for an upstream; (None, None) if it was never loaded."""
     recs = driver.execute_query(cypher("ingestao_get"), {"fonte": fonte}, routing_="r").records
-    return recs[0]["sha"] if recs else None
+    return (recs[0]["sha"], recs[0]["divisao"]) if recs else (None, None)
+
+
+def _dispositivos(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
+    """Split every planned norm and write its Dispositivos, in transactions bounded by text size."""
+    stats = {"dispositivos": 0, "dispositivos_removidos": 0}
+    lote: list[dict] = []
+    tamanho = 0
+
+    def gravar() -> None:
+        nonlocal lote, tamanho
+        if not lote:
+            return
+        esperado = sum(len(r["itens"]) for r in lote)
+        with driver.session() as s:
+            n = s.execute_write(_count, cypher("dispositivos_upsert"), rows=lote, run=run)
+            _expect("dispositivos_upsert", n, esperado)
+            stats["dispositivos"] += n
+            normas = [r["norma"] for r in lote]
+            stats["dispositivos_removidos"] += s.execute_write(
+                _count, cypher("dispositivos_prune"), normas=normas, run=run
+            )
+        lote, tamanho = [], 0
+
+    for norma_id, d in plano.divisoes():
+        itens = []
+        for x in d.dispositivos:
+            row = x.model_dump(exclude={"norma"})
+            row["redacoes_anteriores"] = list(x.redacoes_anteriores) or None
+            itens.append(row)
+            tamanho += len(x.texto) + sum(map(len, x.redacoes_anteriores))
+        lote.append({"norma": norma_id, "divisao": d.metodo, "itens": itens})
+        if tamanho >= TEXTO_POR_LOTE or len(lote) >= 1_000:
+            gravar()
+    gravar()
+    return stats
 
 
 def aplicar(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
@@ -65,6 +103,7 @@ def aplicar(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
     rows = [n.model_dump() for n in plano.normas]
     stats["normas"] = _write(driver, "normas_upsert", rows)
     _expect("normas_upsert", stats["normas"], len(rows))
+    stats |= _dispositivos(driver, plano, run)
 
     if plano.estados is not None:
         rows = [{"id": e.id, "estado": e.estado.value, "caminho": e.caminho} for e in plano.estados]
@@ -105,5 +144,6 @@ def registrar(driver: Driver, plano: Plano) -> None:
         "sha": plano.sha,
         "arquivos": plano.arquivos,
         "modo": "full" if plano.full else "incremental",
+        "divisao": dispositivos.VERSAO,
     }
     driver.execute_query(cypher("ingestao_set"), params, routing_="w")

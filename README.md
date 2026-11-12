@@ -116,7 +116,8 @@ From the terminal:
 uv sync --all-packages
 uv run regteia norma "Resolução BCB 520"
 uv run regteia relacoes "Resolução BCB 589" --profundidade 2 --tipo altera
-uv run regteia buscar "ativos virtuais"
+uv run regteia buscar "custódia de ativos virtuais segregação"   # matches article text, shows excerpts
+uv run regteia dispositivo "Resolução BCB 520, art. 91"            # one article: text, earlier wording, notes
 uv run regteia estatisticas
 uv run regteia vigencia "bcb:resolucao-bcb:520#art-88" 2027-01-02   # planned (roadmap step 7)
 ```
@@ -179,7 +180,7 @@ only runs the tests.
 - [x] Norm-level graph with hourly incremental ingest
 - [x] Query layer, `regteia` CLI, statistics
 - [x] Web: statistics dashboard and overview graph
-- [ ] Article split + Portuguese full-text search
+- [x] Article split + Portuguese full-text search
 - [ ] Local MCP server
 - [ ] Article-level amendments, `vigencia_em`, norm pages
 - [ ] Body-text citations; fewer unresolved references

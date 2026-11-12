@@ -28,10 +28,20 @@ export interface GrupoRelacoes {
   itens: { norma: NormaResumo; desde: string | null; fonte: string | null }[]
 }
 
+export interface DispositivoResumo {
+  id: string
+  tipo: string
+  rotulo: string
+  revogado: boolean
+  contexto: string | null
+}
+
 export interface NormaDetalhe {
   norma: NormaResumo
   relacoes: GrupoRelacoes[]
   notas: string[]
+  divisao: string | null
+  sumario: DispositivoResumo[]
   aviso: string
 }
 
@@ -50,6 +60,11 @@ export interface Estatisticas {
   arestas_com_desde: number
   stubs_por_prefixo: Record<string, number>
   nao_resolvidos_detalhe: { upstream: string; tipo: string; campo: string; n: number; ocorrencias: number }[]
+  dispositivos: number
+  dispositivos_por_tipo: Record<string, number>
+  normas_por_divisao: Record<string, number>
+  dispositivos_revogados: number
+  dispositivos_com_redacao_anterior: number
   falhas_atualizacoes: number | null
   ingestoes: { fonte: string; sha: string | null; em: string | null; arquivos: number | null; modo: string | null }[]
   aviso: string

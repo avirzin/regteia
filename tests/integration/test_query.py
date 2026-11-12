@@ -5,7 +5,16 @@ from datetime import date
 import pytest
 from neo4j import READ_ACCESS
 from neo4j.exceptions import ClientError
-from regteia_query import NormaNaoEncontrada, buscar, estatisticas, norma, panorama, relacoes
+from regteia_query import (
+    DispositivoNaoEncontrado,
+    NormaNaoEncontrada,
+    buscar,
+    dispositivo,
+    estatisticas,
+    norma,
+    panorama,
+    relacoes,
+)
 from regteia_schema.env import AVISO
 
 pytestmark = pytest.mark.integration
@@ -103,3 +112,53 @@ def test_exportar_grafo(db):
     assert GRUPOS[g.grupos[g.ids.index("cvm:resolucao:1")]] == "CVM"
     i589 = g.ids.index("bcb:resolucao-bcb:589")
     assert any(o == i589 and d == i520 for o, d in zip(g.origens, g.destinos, strict=True))
+
+
+def test_buscar_finds_article_text_with_excerpt(db):
+    # "embaralhadores" is only in the body of Res. BCB 520 (art. 90, parágrafo único), not in any title or ementa
+    r = buscar(db, "misturadores embaralhadores")
+    assert r.itens[0].norma.id == "bcb:resolucao-bcb:520"
+    [t, *_] = r.itens[0].trechos
+    assert t.dispositivo.id == "bcb:resolucao-bcb:520#art-90" and t.dispositivo.rotulo == "Art. 90"
+    assert "embaralhadores" in t.trecho and len(t.trecho) < 340
+    assert "dispositivos" in r.notas[0]
+
+
+def test_norma_lists_its_dispositivos(db):
+    r = norma(db, "Resolução BCB 520, art. 88")  # the article part is ignored here
+    assert r.norma.id == "bcb:resolucao-bcb:520"
+    assert r.divisao == "artigos" and len(r.sumario) == 94
+    assert [d.rotulo for d in r.sumario[:3]] == ["Preâmbulo", "Art. 1", "Art. 2"]
+
+
+def test_dispositivo_latest_wording_earlier_wording_and_future_dates(db):
+    r = dispositivo(db, "art. 91 da Resolução BCB 520", hoje=date(2026, 9, 1))
+    assert r.dispositivo.id == "bcb:resolucao-bcb:520#art-91" and not r.dispositivo.revogado
+    assert "6 de novembro de 2026" in r.texto and "~~" not in r.texto
+    assert len(r.redacoes_anteriores) == 1 and "30 de outubro de 2026" in r.redacoes_anteriores[0]
+    assert r.anterior.rotulo == "Art. 90" and r.proximo.rotulo == "Art. 92"
+    assert r.dispositivo.contexto.startswith("CAPÍTULO XI")
+    assert any("redação mais recente" in n for n in r.notas)
+    assert any("01/10/2026" in n and "vigência futura" in n for n in r.notas)  # "Redação dada, a partir de 1º/10/2026"
+    assert any(n.startswith("Alterada") for n in r.notas)  # the norm-level note comes too
+    assert r.aviso == AVISO
+    # same article by id, and after the date the future note is gone
+    r2 = dispositivo(db, "bcb:resolucao-bcb:520#art-91", hoje=date(2026, 11, 12))
+    assert r2.texto == r.texto and not any("vigência futura" in n for n in r2.notas)
+
+
+def test_dispositivo_not_found_and_missing_reference(db):
+    with pytest.raises(DispositivoNaoEncontrado) as e:
+        dispositivo(db, "Resolução BCB 520, art. 95")
+    assert [i for i, _ in e.value.sugestoes][:2] == ["bcb:resolucao-bcb:520#art-92", "bcb:resolucao-bcb:520#art-91"]
+    with pytest.raises(ValueError):
+        dispositivo(db, "Resolução BCB 520")
+    with pytest.raises(NormaNaoEncontrada):
+        dispositivo(db, "Resolução BCB 99999, art. 1")
+
+
+def test_estatisticas_dispositivos(db):
+    e = estatisticas(db)
+    assert e.dispositivos == sum(e.dispositivos_por_tipo.values()) > 100
+    assert e.normas_por_divisao["vazio"] == 1 and e.normas_por_divisao["artigos"] >= 10
+    assert e.dispositivos_com_redacao_anterior >= 1

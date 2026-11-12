@@ -57,3 +57,16 @@ def test_grafo_arrow_and_etag(client):
     assert client.get("/api/grafo.arrow", headers={"If-None-Match": etag}).status_code == 304
     com = pa.ipc.open_stream(client.get("/api/grafo.arrow", params={"comunicados": "true"}).content).read_all()
     assert com.num_rows == nos.num_rows + 1  # the one comunicado in the fixtures
+
+
+def test_dispositivo_and_buscar_trechos(client):
+    r = client.get("/api/dispositivos/bcb:resolucao-bcb:520%23art-91")
+    assert r.status_code == 200
+    j = r.json()
+    assert j["dispositivo"]["rotulo"] == "Art. 91" and j["redacoes_anteriores"] and j["aviso"] == AVISO
+    assert client.get("/api/dispositivos/Resolução BCB 520, art. 91").json()["texto"] == j["texto"]
+    r = client.get("/api/dispositivos/Resolução BCB 520, art. 95")
+    assert r.status_code == 404 and r.json()["detail"]["sugestoes"][0]["id"] == "bcb:resolucao-bcb:520#art-92"
+    assert client.get("/api/dispositivos/Resolução BCB 520").status_code == 422
+    b = client.get("/api/buscar", params={"q": "embaralhadores"}).json()
+    assert b["itens"][0]["trechos"][0]["dispositivo"]["id"] == "bcb:resolucao-bcb:520#art-90"

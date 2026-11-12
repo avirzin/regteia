@@ -1,8 +1,18 @@
 {
   "app": {
-    "nav": { "visaoGeral": "Visão geral", "estatisticas": "Estatísticas" },
-    "tema": { "botao": "Tema", "rotulo": "Alternar tema claro/escuro" },
-    "idioma": { "grupo": "Idioma", "pt-BR": "Português (Brasil)", "en": "English" },
+    "nav": {
+      "visaoGeral": "Visão geral",
+      "estatisticas": "Estatísticas"
+    },
+    "tema": {
+      "botao": "Tema",
+      "rotulo": "Alternar tema claro/escuro"
+    },
+    "idioma": {
+      "grupo": "Idioma",
+      "pt-BR": "Português (Brasil)",
+      "en": "English"
+    },
     "aviso": "Conversão automatizada, apenas informativa. Não substitui o Diário Oficial da União nem os portais oficiais do BCB e da CVM; confira sempre a fonte oficial indicada."
   },
   "graficos": {
@@ -73,11 +83,17 @@
     "decadaFinal": "Década final",
     "decadaAte": "a",
     "decada": "{d}s",
-    "incluirComunicados": "Incluir comunicados"
+    "incluirComunicados": "Incluir comunicados",
+    "painelDispositivos": "Dispositivos: {n}",
+    "painelArtigos": "{n} artigos",
+    "painelRevogados": "{n} revogados"
   },
   "est": {
     "erro": "Não foi possível carregar as estatísticas: {erro}",
-    "acervo": { "titulo": "Acervo", "sub": "Normas com arquivo nos acervos normas-bcb e normas-cvm." },
+    "acervo": {
+      "titulo": "Acervo",
+      "sub": "Normas com arquivo nos acervos normas-bcb e normas-cvm."
+    },
     "kpi": {
       "normas": "normas",
       "vigentes": "vigentes",
@@ -88,8 +104,15 @@
       "naoResolvidos": "referências não resolvidas",
       "ocr": "textos obtidos por OCR"
     },
-    "estado": { "vigente": "Vigente", "alterada": "Alterada", "revogada": "Revogada" },
-    "orgao": { "titulo": "Situação por órgão", "sub": "Estado atual de cada norma, segundo o grafo do acervo." },
+    "estado": {
+      "vigente": "Vigente",
+      "alterada": "Alterada",
+      "revogada": "Revogada"
+    },
+    "orgao": {
+      "titulo": "Situação por órgão",
+      "sub": "Estado atual de cada norma, segundo o grafo do acervo."
+    },
     "serie": {
       "titulo": "Normas por série",
       "sub": "As 15 maiores séries. Comunicados do BCB são, em sua maioria, avisos de leilão.",
@@ -97,7 +120,11 @@
       "extra": "vigentes {v} · alteradas {a} · revogadas {r}",
       "cabecalho": "Série"
     },
-    "decada": { "titulo": "Normas por década", "sub": "Pela data de cada norma. Todos os órgãos.", "cabecalho": "Década" },
+    "decada": {
+      "titulo": "Normas por década",
+      "sub": "Pela data de cada norma. Todos os órgãos.",
+      "cabecalho": "Década"
+    },
     "relacao": {
       "titulo": "Relações por tipo",
       "sub": "{com} de {total} relações têm data de início (“desde”).",
@@ -150,6 +177,33 @@
       "arquivos": "Arquivos",
       "semParser": "Falhas do parser de atualizações: o parser ainda não existe (roadmap, passo 7).",
       "falhas": "Falhas do parser de atualizações: {n}"
+    },
+    "dispositivos": {
+      "titulo": "Divisão em dispositivos",
+      "sub": "Cada norma é dividida em artigos (com parágrafos, incisos e alíneas dentro), anexos e preâmbulo; normas antigas sem artigos, por itens (I, II…); o resto fica como texto integral, também pesquisável.",
+      "kpiDispositivos": "dispositivos",
+      "kpiArtigos": "artigos",
+      "kpiRevogados": "artigos revogados",
+      "kpiAnteriores": "com redação anterior riscada",
+      "porDivisao": "Normas por forma de divisão",
+      "porTipo": "Dispositivos por tipo",
+      "cabecalhoDivisao": "Divisão",
+      "cabecalhoTipo": "Tipo",
+      "valor": "Dispositivos",
+      "divisao": {
+        "artigos": "Por artigos",
+        "itens": "Por itens (normas antigas)",
+        "texto": "Texto integral",
+        "vazio": "Sem texto no portal",
+        "?": "Ainda não dividida"
+      },
+      "tipo": {
+        "artigo": "Artigo",
+        "texto": "Texto integral",
+        "item": "Item",
+        "preambulo": "Preâmbulo",
+        "anexo": "Anexo"
+      }
     }
   }
 }

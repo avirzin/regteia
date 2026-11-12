@@ -8,8 +8,8 @@ from pydantic import BaseModel
 
 from .db import Leitor
 from .estatisticas import estatisticas
-from .modelos import Estatisticas, NormaDetalhe, NormaResumo, ResultadoBusca, Subgrafo
-from .normas import NormaNaoEncontrada, buscar, norma, panorama
+from .modelos import DispositivoDetalhe, Estatisticas, NormaDetalhe, NormaResumo, ResultadoBusca, Subgrafo
+from .normas import NormaNaoEncontrada, buscar, dispositivo, norma, panorama
 from .relacoes import PROFUNDIDADE_MAX, TODOS, relacoes
 
 ROTULO_RELACAO = {
@@ -58,6 +58,30 @@ def fmt_norma(r: NormaDetalhe) -> str:
             out.append(f"  {_linha(v.norma, desde)}")
         if g.total > len(g.itens):
             out.append(f"  ... e mais {g.total - len(g.itens)} (use `regteia relacoes`)")
+    if r.sumario:
+        artigos = [d for d in r.sumario if d.tipo == "artigo"]
+        revogados = sum(d.revogado for d in r.sumario)
+        resumo = f"{len(artigos)} artigo(s)" if artigos else f"divisão: {r.divisao}"
+        out.append(f"\nDispositivos ({len(r.sumario)}; {resumo}{f', {revogados} revogado(s)' if revogados else ''}):")
+        out.append("  " + ", ".join(d.rotulo + (" [revogado]" if d.revogado else "") for d in r.sumario[:40]))
+        if len(r.sumario) > 40:
+            out.append(f'  ... e mais {len(r.sumario) - 40} (use `regteia dispositivo "<norma>, art. N"`)')
+    return "\n".join(out)
+
+
+def fmt_dispositivo(r: DispositivoDetalhe) -> str:
+    d = r.dispositivo
+    situacao = "REVOGADO" if d.revogado else r.norma.situacao
+    out = [f"[{situacao}] {r.norma.rotulo}, {d.rotulo}  {d.id}", *_links(r.norma)]
+    if d.contexto:
+        out.append(f"  {d.contexto}")
+    out += [f"  ! {nota}" for nota in r.notas]
+    out += ["", r.texto or "(sem texto: dispositivo revogado)"]
+    for i, ant in enumerate(r.redacoes_anteriores, 1):
+        out += ["", f"--- Redação anterior {i} (riscada no portal) ---", ant]
+    nav = [f"anterior: {r.anterior.rotulo}" if r.anterior else "", f"próximo: {r.proximo.rotulo}" if r.proximo else ""]
+    if any(nav):
+        out += ["", "  ".join(x for x in nav if x)]
     return "\n".join(out)
 
 
@@ -67,6 +91,9 @@ def fmt_busca(r: ResultadoBusca) -> str:
         out.append(f"  {i.score:6.2f}  {_linha(i.norma)}")
         if i.norma.fonte_url:
             out.append(f"          {i.norma.fonte_url}")
+        for t in i.trechos:
+            rev = " [REVOGADO]" if t.dispositivo.revogado else ""
+            out.append(f"          {t.dispositivo.rotulo}{rev}: {t.trecho}")
     out += [f"  ! {nota}" for nota in r.notas]
     return "\n".join(out)
 
@@ -95,6 +122,10 @@ def fmt_estatisticas(r: Estatisticas) -> str:
         f"Relações: {r.arestas:,}  (com data 'desde': {r.arestas_com_desde:,})",
         "  " + ", ".join(f"{k} {v:,}" for k, v in r.arestas_por_relacao.items()),
         f"Referências não resolvidas: {r.nao_resolvidos:,}",
+        f"Dispositivos: {r.dispositivos:,}  "
+        + ", ".join(f"{k} {v:,}" for k, v in r.dispositivos_por_tipo.items())
+        + f"; revogados {r.dispositivos_revogados:,}, com redação anterior {r.dispositivos_com_redacao_anterior:,}",
+        "  Normas por divisão: " + ", ".join(f"{k} {v:,}" for k, v in r.normas_por_divisao.items()),
         "Falhas do parser de atualizações: "
         + ("ainda não implementado" if r.falhas_atualizacoes is None else f"{r.falhas_atualizacoes:,}"),
         "\nPor órgão:",
@@ -125,7 +156,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("ref", help='id or name, e.g. "Resolução BCB 520", "bcb:resolucao-bcb:520"')
     sp.add_argument("--limite", type=int, default=10, help="items per relation type")
 
-    sp = sub.add_parser("buscar", help="full-text search (titles and summaries for now)")
+    sp = sub.add_parser("dispositivo", help="one article (or annex, item): text, notes, earlier wording")
+    sp.add_argument("ref", help='e.g. "Resolução BCB 520, art. 88", "bcb:resolucao-bcb:520#art-88"')
+
+    sp = sub.add_parser("buscar", help="full-text search over titles, summaries and article text")
     sp.add_argument("texto")
     sp.add_argument("--limite", type=int, default=20)
     sp.add_argument("--sem-revogadas", action="store_true")
@@ -156,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
 
     calls: dict[str, tuple[Callable[[Leitor], BaseModel], Callable]] = {
         "norma": (lambda db: norma(db, args.ref, limite=args.limite), fmt_norma),
+        "dispositivo": (lambda db: dispositivo(db, args.ref), fmt_dispositivo),
         "buscar": (
             lambda db: buscar(
                 db,

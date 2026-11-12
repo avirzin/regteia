@@ -276,6 +276,14 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     if (n.url_externa) links.append(linkSeguro(n.url_externa, t('visao.ondeEsta')))
     painel.append(links)
     if (n.ementa) painel.append(el('p', {}, n.ementa))
+    if (d.sumario.length) {
+      const artigos = d.sumario.filter((x) => x.tipo === 'artigo')
+      const revogados = d.sumario.filter((x) => x.revogado).length
+      const partes = [t('visao.painelDispositivos', { n: fmt.format(d.sumario.length) })]
+      if (artigos.length) partes.push(t('visao.painelArtigos', { n: fmt.format(artigos.length) }))
+      if (revogados) partes.push(t('visao.painelRevogados', { n: fmt.format(revogados) }))
+      painel.append(el('p', { class: 'nota' }, partes.join(' · ')))
+    }
     for (const nota of d.notas) painel.append(el('p', { class: 'nota' }, `⚠ ${nota}`))
     for (const g of d.relacoes) {
       painel.append(el('strong', {}, `${tDinamico(`direcao.${g.direcao}.${g.tipo}`, g.tipo)} (${fmt.format(g.total)})`))

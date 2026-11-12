@@ -39,3 +39,10 @@ def parse_frontmatter(lines: Iterable[str]) -> dict[str, object]:
 def read_frontmatter(path: Path) -> dict[str, object]:
     with path.open(encoding="utf-8") as f:
         return parse_frontmatter(f)
+
+
+def read_norma(path: Path) -> tuple[dict[str, object], str]:
+    """Frontmatter and body (the Markdown after the closing `---`) of a norm file."""
+    with path.open(encoding="utf-8") as f:
+        fm = parse_frontmatter(f)
+        return fm, f.read()

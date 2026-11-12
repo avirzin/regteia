@@ -5,7 +5,7 @@ validates everything before anything is written: one bad record fails the whole 
 """
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,7 +22,8 @@ from regteia_schema import (
 )
 
 from ..config import Upstream
-from ..parse.frontmatter import FrontmatterError, read_frontmatter
+from ..parse.dispositivos import Divisao, dividir
+from ..parse.frontmatter import FrontmatterError, read_frontmatter, read_norma
 from .git import Change
 
 GRAFO = "grafo"
@@ -52,6 +53,15 @@ class Plano:
     nao_resolvidos: list[NaoResolvidoAlvo | NaoResolvidoPadrao] | None = None
     arquivos: int = 0  # files changed upstream (all norm files on a full load)
     ids_vivos: set[str] = field(default_factory=set)  # norm ids backed by a file at `sha`
+    root: Path | None = None  # the checkout, for reading bodies when writing
+
+    def divisoes(self) -> Iterator[tuple[str, Divisao]]:
+        """Each planned norm split into Dispositivos, read lazily so a full load never holds every text at once.
+        Splitting cannot fail (no input is invalid, only less structured); the files were validated by planejar."""
+        assert self.root is not None
+        for n in self.normas:
+            _, corpo = read_norma(self.root / n.caminho)
+            yield n.id, dividir(n.id, corpo)
 
 
 def is_norm_path(path: str) -> bool:
@@ -157,7 +167,7 @@ def planejar(root: Path, up: Upstream, sha: str, changes: list[Change] | None) -
         except (OSError, FrontmatterError, ValidationError) as e:
             errors.append(f"{row.caminho}: {_short(e)}")
 
-    plano = Plano(upstream=up.name, sha=sha, full=full, normas=normas, arquivos=arquivos, ids_vivos=ids)
+    plano = Plano(upstream=up.name, sha=sha, full=full, normas=normas, arquivos=arquivos, ids_vivos=ids, root=root)
     if grafo_changed:
         plano.estados = estados
         plano.arestas = _read_jsonl(grafo / "arestas.jsonl", ArestaRow.model_validate, errors)
