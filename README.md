@@ -78,8 +78,12 @@ At `http://127.0.0.1:8080`:
 - **Statistics:** norms per series and per body, in force / amended / revoked, relations by type and origin, norms
   per decade, unresolved references, parse failures, and the last update (upstream commit, time, files changed).
   All computed live from the database.
-- **Norm page:** text by article, amendment timeline, an "in force on [date]" switch, and the norm's neighborhood
-  (what it amends, what amended it, what it rests on) laid out left to right by date.
+- **Norm page** (roadmap step 7): text by article, amendment timeline, an "in force on [date]" switch, and the
+  norm's neighborhood (what it amends, what amended it, what it rests on) laid out left to right by date. Until then,
+  clicking a norm in the overview opens a side panel with its status, official source and direct relations.
+
+Frontend development: `uv run regteia-server` (API on :8080), then `cd apps/web && npm install && npm run dev`
+(http://127.0.0.1:5173, proxies `/api`).
 
 ## Quick start
 
@@ -88,13 +92,13 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/).
 ```bash
 git clone https://github.com/<owner>/regteia && cd regteia
 cp .env.example .env                      # set NEO4J_PASSWORD
-docker compose up -d                      # Neo4j + updater (the web app comes later)
+docker compose up -d                      # Neo4j, updater, web app
 docker compose logs -f updater            # first run clones upstream and loads everything (~2 min + download)
 ```
 
 To force a full reload later: `docker compose exec updater regteia-ingest full`.
 
-Then open `http://127.0.0.1:8080`. The Neo4j Browser is at `http://127.0.0.1:7474` if you want to write Cypher,
+Then open `http://127.0.0.1:8080` (the JSON API is documented at `http://127.0.0.1:8080/api/docs`). The Neo4j Browser is at `http://127.0.0.1:7474` if you want to write Cypher,
 for example everything that amended Resolução BCB 520:
 
 ```cypher
@@ -170,7 +174,7 @@ only runs the tests.
 - [x] Scaffold: workspace, Docker Compose stack, migrations, CI
 - [x] Norm-level graph with hourly incremental ingest
 - [x] Query layer, `regteia` CLI, statistics
-- [ ] Web: statistics dashboard and overview graph
+- [x] Web: statistics dashboard and overview graph
 - [ ] Article split + Portuguese full-text search
 - [ ] Local MCP server
 - [ ] Article-level amendments, `vigencia_em`, norm pages

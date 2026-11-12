@@ -4,3 +4,5 @@ _upstream
 **/__pycache__
 **/node_modules
 .env
+apps/web/node_modules
+apps/web/dist

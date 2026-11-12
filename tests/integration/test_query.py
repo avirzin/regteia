@@ -1,45 +1,19 @@
 """query functions over the real fixture excerpts loaded into a real Neo4j."""
 
 from datetime import date
-from pathlib import Path
 
 import pytest
-from neo4j import READ_ACCESS, GraphDatabase
+from neo4j import READ_ACCESS
 from neo4j.exceptions import ClientError
-from regteia_ingest.config import Settings, Upstream
-from regteia_ingest.migrate import migrate
-from regteia_ingest.run import ingest
-from regteia_query import Leitor, NormaNaoEncontrada, buscar, estatisticas, norma, panorama, relacoes
+from regteia_query import NormaNaoEncontrada, buscar, estatisticas, norma, panorama, relacoes
 from regteia_schema.env import AVISO
 
 pytestmark = pytest.mark.integration
-MIGRATIONS = Path(__file__).parents[2] / "db" / "migrations"
 
 
 @pytest.fixture(scope="module")
-def db(neo4j_url, tmp_path_factory):
-    import shutil
-    import subprocess
-
-    from tests.conftest import FIXTURES
-
-    tmp = tmp_path_factory.mktemp("q")
-    driver = GraphDatabase.driver(neo4j_url, auth=("neo4j", "test-password"), notifications_min_severity="OFF")
-    driver.execute_query("MATCH (n) DETACH DELETE n")
-    migrate(driver, MIGRATIONS)
-    ups = []
-    for name in ("normas-bcb", "normas-cvm"):
-        repo = tmp / name
-        shutil.copytree(FIXTURES / name, repo)
-        for cmd in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "f"]):
-            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *cmd], cwd=repo, check=True)
-        ups.append(Upstream(name=name, url=str(repo), ref="main", adapter="normas_grafo", acervo=name[7:]))
-    assert ingest(driver, Settings("", "", "", tmp / "clones", Path("x"), MIGRATIONS), ups, full=True)
-    driver.execute_query("CALL db.awaitIndexes(60)")
-    driver.close()
-    leitor = Leitor(GraphDatabase.driver(neo4j_url, auth=("neo4j", "test-password"), notifications_min_severity="OFF"))
-    yield leitor
-    leitor.close()
+def db(leitor):
+    return leitor
 
 
 def test_read_sessions_reject_writes(db):
@@ -110,3 +84,22 @@ def test_estatisticas(db):
     assert sum(s.total for s in e.por_serie) == 20
     assert {i.fonte for i in e.ingestoes} == {"normas-bcb", "normas-cvm"}
     assert e.falhas_atualizacoes is None
+
+
+def test_exportar_grafo(db):
+    from regteia_query import GRUPOS, exportar_grafo
+
+    g = exportar_grafo(db)
+    n = len(g.ids)
+    assert len(g.titulos) == len(g.grupos) == len(g.estados) == len(g.anos) == n
+    assert len(g.origens) == len(g.destinos) == len(g.tipos)
+    assert all(0 <= i < n for i in g.origens + g.destinos)
+    assert "bcb:comunicado:10000" not in g.ids  # comunicados hidden by default
+    assert "bcb:comunicado:10000" in exportar_grafo(db, comunicados=True).ids
+    i520 = g.ids.index("bcb:resolucao-bcb:520")
+    assert GRUPOS[g.grupos[i520]] == "BCB"
+    assert GRUPOS[g.grupos[g.ids.index("lei:4595-1964")]] == "Lei federal"
+    assert GRUPOS[g.grupos[g.ids.index("bcb:resolucao-cmn:102")]] == "CMN"
+    assert GRUPOS[g.grupos[g.ids.index("cvm:resolucao:1")]] == "CVM"
+    i589 = g.ids.index("bcb:resolucao-bcb:589")
+    assert any(o == i589 and d == i520 for o, d in zip(g.origens, g.destinos, strict=True))

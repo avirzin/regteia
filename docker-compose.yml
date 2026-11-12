@@ -24,6 +24,7 @@ services:
 
   # Hourly incremental ingest. The first run has no loaded SHA, so it does a full load.
   updater:
+    image: regteia:local
     build: .
     environment:
       NEO4J_URI: bolt://neo4j:7687
@@ -46,7 +47,23 @@ services:
         done
     restart: unless-stopped
 
-  # server (API + web app on 127.0.0.1:8080) arrives with roadmap steps 3-4.
+  # API + web app: http://127.0.0.1:8080
+  server:
+    image: regteia:local
+    build: .
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      # 0.0.0.0 inside the container only, so Docker can publish the port; the host side is 127.0.0.1 below.
+      REGTEIA_SERVER_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    command: ["regteia-server"]
+    restart: unless-stopped
 
 volumes:
   neo4j-data:

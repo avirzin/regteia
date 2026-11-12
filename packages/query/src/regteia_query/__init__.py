@@ -2,7 +2,21 @@
 
 from .db import Leitor
 from .estatisticas import estatisticas
+from .grafo import GRUPOS, GrafoExportado, exportar_grafo, versao_dados
 from .normas import NormaNaoEncontrada, buscar, norma, panorama, resolver
 from .relacoes import relacoes
 
-__all__ = ["Leitor", "NormaNaoEncontrada", "buscar", "estatisticas", "norma", "panorama", "relacoes", "resolver"]
+__all__ = [
+    "GRUPOS",
+    "GrafoExportado",
+    "Leitor",
+    "exportar_grafo",
+    "versao_dados",
+    "NormaNaoEncontrada",
+    "buscar",
+    "estatisticas",
+    "norma",
+    "panorama",
+    "relacoes",
+    "resolver",
+]
