@@ -1,0 +1,6 @@
+.git
+.venv
+_upstream
+**/__pycache__
+**/node_modules
+.env

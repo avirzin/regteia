@@ -1,0 +1,25 @@
+# Upstream repos Regteia ingests. The only place they are named. Never add them as git submodules.
+# url: git URL or local path. ref: branch, tag or commit SHA (pin a SHA for reproducible builds).
+
+[[upstream]]
+name = "normas-bcb"
+url = "https://github.com/BrunooMoniz/normas-bcb.git"
+ref = "main"
+adapter = "normas_grafo"
+acervo = "bcb"
+
+[[upstream]]
+name = "normas-cvm"
+url = "https://github.com/BrunooMoniz/normas-cvm.git"
+ref = "main"
+adapter = "normas_grafo"
+acervo = "cvm"
+
+# Roadmap step 9. Huge repo (~1.49M files): only the laws BCB/CVM edges point to will be checked out.
+[[upstream]]
+name = "leis"
+url = "https://github.com/ctresb/leis.git"
+ref = "main"
+adapter = "ctresb_leis"
+acervo = "lei"
+enabled = false

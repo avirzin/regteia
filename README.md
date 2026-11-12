@@ -88,9 +88,11 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/).
 ```bash
 git clone https://github.com/<owner>/regteia && cd regteia
 cp .env.example .env                      # set NEO4J_PASSWORD
-docker compose up -d                      # Neo4j, updater, web app
-docker compose exec updater regteia-ingest full    # first load: clones upstream and builds the graph
+docker compose up -d                      # Neo4j + updater (the web app comes later)
+docker compose logs -f updater            # first run clones upstream and loads everything (~2 min + download)
 ```
+
+To force a full reload later: `docker compose exec updater regteia-ingest full`.
 
 Then open `http://127.0.0.1:8080`. The Neo4j Browser is at `http://127.0.0.1:7474` if you want to write Cypher,
 for example everything that amended Resolução BCB 520:
@@ -105,8 +107,14 @@ From the terminal:
 ```bash
 uv sync --all-packages
 uv run regteia norma "Resolução BCB 520"
-uv run regteia vigencia "bcb:resolucao-bcb:520#art-88" 2027-01-02
+uv run regteia relacoes "Resolução BCB 589" --profundidade 2 --tipo altera
+uv run regteia buscar "ativos virtuais"
+uv run regteia estatisticas
+uv run regteia vigencia "bcb:resolucao-bcb:520#art-88" 2027-01-02   # planned (roadmap step 7)
 ```
+
+Without uv on the host, the same CLI is in the updater container: `docker compose exec updater regteia norma "ICVM 400"`.
+Add `--json` before the subcommand for machine-readable output.
 
 ## Using it from your AI assistant (local MCP)
 
@@ -159,9 +167,9 @@ only runs the tests.
 
 ## Roadmap
 
-- [ ] Scaffold: workspace, Docker Compose stack, migrations, CI
-- [ ] Norm-level graph with hourly incremental ingest
-- [ ] Query layer, `regteia` CLI, statistics
+- [x] Scaffold: workspace, Docker Compose stack, migrations, CI
+- [x] Norm-level graph with hourly incremental ingest
+- [x] Query layer, `regteia` CLI, statistics
 - [ ] Web: statistics dashboard and overview graph
 - [ ] Article split + Portuguese full-text search
 - [ ] Local MCP server

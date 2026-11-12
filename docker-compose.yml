@@ -1,0 +1,53 @@
+# Local only: every published port is bound to 127.0.0.1. Do not change that.
+name: regteia
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_server_memory_heap_initial__size: 1G
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 1G
+      NEO4J_db_transaction_timeout: 5m
+    ports:
+      - "127.0.0.1:7474:7474"  # Neo4j Browser
+      - "127.0.0.1:7687:7687"  # Bolt (CLI, MCP and dev tools on this machine)
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    restart: unless-stopped
+
+  # Hourly incremental ingest. The first run has no loaded SHA, so it does a full load.
+  updater:
+    build: .
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      REGTEIA_UPSTREAM_DIR: /data/upstream
+      REGTEIA_INTERVAL: ${REGTEIA_INTERVAL:-3600}
+    volumes:
+      - upstream:/data/upstream
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          regteia-ingest incremental || echo "ingest failed (exit $$?), retrying next run"
+          sleep "$$REGTEIA_INTERVAL"
+        done
+    restart: unless-stopped
+
+  # server (API + web app on 127.0.0.1:8080) arrives with roadmap steps 3-4.
+
+volumes:
+  neo4j-data:
+  upstream:
