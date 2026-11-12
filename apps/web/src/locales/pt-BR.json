@@ -1,0 +1,155 @@
+{
+  "app": {
+    "nav": { "visaoGeral": "Visão geral", "estatisticas": "Estatísticas" },
+    "tema": { "botao": "Tema", "rotulo": "Alternar tema claro/escuro" },
+    "idioma": { "grupo": "Idioma", "pt-BR": "Português (Brasil)", "en": "English" },
+    "aviso": "Conversão automatizada, apenas informativa. Não substitui o Diário Oficial da União nem os portais oficiais do BCB e da CVM; confira sempre a fonte oficial indicada."
+  },
+  "graficos": {
+    "verTabela": "Ver tabela",
+    "normas": "Normas",
+    "total": "Total",
+    "pctTotal": "{pct}% do total"
+  },
+  "grupo": {
+    "CMN": "CMN",
+    "BCB": "BCB",
+    "CVM": "CVM",
+    "Lei federal": "Lei federal",
+    "Outros": "Outros"
+  },
+  "estado": {
+    "vigente": "Vigente",
+    "alterada": "Vigente, alterada",
+    "revogada": "Revogada",
+    "externa": "Fora do acervo"
+  },
+  "relacao": {
+    "REVOGA": "Revoga",
+    "REVOGA_PARCIAL": "Revoga parc.",
+    "ALTERA": "Altera",
+    "CITA": "Cita",
+    "REGULAMENTA": "Regulamenta",
+    "CONJUNTA": "Conjunta"
+  },
+  "direcao": {
+    "saida": {
+      "REVOGA": "Revoga",
+      "REVOGA_PARCIAL": "Revoga parcialmente",
+      "ALTERA": "Altera",
+      "CITA": "Cita",
+      "REGULAMENTA": "Fundamenta-se em",
+      "CONJUNTA": "Conjunta com"
+    },
+    "entrada": {
+      "REVOGA": "Revogada por",
+      "REVOGA_PARCIAL": "Revogada parcialmente por",
+      "ALTERA": "Alterada por",
+      "CITA": "Citada por",
+      "REGULAMENTA": "Base legal de",
+      "CONJUNTA": "Conjunta com"
+    }
+  },
+  "visao": {
+    "carregando": "Carregando o grafo…",
+    "erro": "Não foi possível carregar o grafo: {erro}",
+    "grafoMudou": "o grafo mudou entre as duas requisições (nova ingestão); recarregue",
+    "status": "{normas} normas · {relacoes} relações visíveis",
+    "comunicadosOcultos": "comunicados ocultos",
+    "dicaRelacoes": "{n} relações",
+    "legendaTamanho": "Tamanho: número de relações",
+    "fechar": "Fechar",
+    "fonteOficial": "Fonte oficial",
+    "arquivo": "Arquivo (versão exata)",
+    "ondeEsta": "Onde está",
+    "aPartirDe": "a partir de {data}",
+    "eMais": "… e mais {n}",
+    "busca": "Encontrar norma: Resolução BCB 520, ICVM 400…",
+    "filtroOrgao": "Órgão",
+    "filtroSituacao": "Situação",
+    "filtroRelacao": "Relação",
+    "decadas": "Décadas",
+    "decadaInicial": "Década inicial",
+    "decadaFinal": "Década final",
+    "decadaAte": "a",
+    "decada": "{d}s",
+    "incluirComunicados": "Incluir comunicados"
+  },
+  "est": {
+    "erro": "Não foi possível carregar as estatísticas: {erro}",
+    "acervo": { "titulo": "Acervo", "sub": "Normas com arquivo nos acervos normas-bcb e normas-cvm." },
+    "kpi": {
+      "normas": "normas",
+      "vigentes": "vigentes",
+      "alteradas": "alteradas (texto consolidado)",
+      "revogadas": "revogadas",
+      "relacoes": "relações entre normas",
+      "stubs": "normas referenciadas fora do acervo",
+      "naoResolvidos": "referências não resolvidas",
+      "ocr": "textos obtidos por OCR"
+    },
+    "estado": { "vigente": "Vigente", "alterada": "Alterada", "revogada": "Revogada" },
+    "orgao": { "titulo": "Situação por órgão", "sub": "Estado atual de cada norma, segundo o grafo do acervo." },
+    "serie": {
+      "titulo": "Normas por série",
+      "sub": "As 15 maiores séries. Comunicados do BCB são, em sua maioria, avisos de leilão.",
+      "demais": "Demais {n} séries",
+      "extra": "vigentes {v} · alteradas {a} · revogadas {r}",
+      "cabecalho": "Série"
+    },
+    "decada": { "titulo": "Normas por década", "sub": "Pela data de cada norma. Todos os órgãos.", "cabecalho": "Década" },
+    "relacao": {
+      "titulo": "Relações por tipo",
+      "sub": "{com} de {total} relações têm data de início (“desde”).",
+      "cabecalho": "Relação",
+      "valor": "Relações",
+      "CITA": "Cita",
+      "REGULAMENTA": "Regulamenta (base legal)",
+      "REVOGA": "Revoga",
+      "ALTERA": "Altera",
+      "REVOGA_PARCIAL": "Revoga parcialmente",
+      "CONJUNTA": "Conjunta"
+    },
+    "fonte": {
+      "titulo": "Relações por origem",
+      "sub": "Campo do cabeçalho de onde o acervo extraiu cada relação.",
+      "cabecalho": "Origem"
+    },
+    "stubs": {
+      "titulo": "Normas fora do acervo",
+      "sub": "Referenciadas por normas do acervo, mas sem texto aqui (leis federais chegam no passo 9 do roadmap).",
+      "cabecalho": "Tipo",
+      "prefixo": {
+        "ext": "Outros órgãos (ext)",
+        "lei": "Leis ordinárias",
+        "dec": "Decretos",
+        "mpv": "Medidas provisórias",
+        "del": "Decretos-lei",
+        "lcp": "Leis complementares",
+        "ldl": "Leis delegadas",
+        "bcb": "BCB sem arquivo",
+        "cvm": "CVM sem arquivo"
+      }
+    },
+    "naoResolvidos": {
+      "titulo": "Referências não resolvidas",
+      "sub": "O acervo não conseguiu ligar estas referências a uma norma. “alvo”: identificador sem norma; “padrão”: texto não reconhecido.",
+      "cabecalho": "Origem",
+      "valor": "Referências",
+      "ocorrencias": "{n} ocorrências",
+      "alvo": "alvo",
+      "padrao": "padrão"
+    },
+    "ingestao": {
+      "titulo": "Última ingestão",
+      "sub": "Versão exata dos acervos carregada no banco. Atualizada a cada hora.",
+      "acervo": "Acervo",
+      "commit": "Commit",
+      "quando": "Quando",
+      "modo": "Modo",
+      "arquivos": "Arquivos",
+      "semParser": "Falhas do parser de atualizações: o parser ainda não existe (roadmap, passo 7).",
+      "falhas": "Falhas do parser de atualizações: {n}"
+    }
+  }
+}

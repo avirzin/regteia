@@ -1,5 +1,6 @@
 // Typed client for regteia-server. Shapes mirror regteia_query.modelos.
 import { tableFromIPC, type Table } from 'apache-arrow'
+import { t } from './i18n'
 
 export type Estado = 'vigente' | 'alterada' | 'revogada'
 
@@ -85,16 +86,10 @@ export const api = {
       }),
     )
     if (nos.schema.metadata.get('versao') !== arestas.schema.metadata.get('versao')) {
-      throw new Error('o grafo mudou entre as duas requisições (nova ingestão); recarregue')
+      throw new Error(t('visao.grafoMudou'))
     }
     return { nos, arestas }
   },
 }
 
-export const fmt = new Intl.NumberFormat('pt-BR')
-export const fmtCompacto = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })
-export function fmtData(iso: string | null): string {
-  if (!iso) return ''
-  const [a, m, d] = iso.slice(0, 10).split('-')
-  return `${d}/${m}/${a}`
-}
+export { fmt, fmtCompacto, fmtData } from './i18n'

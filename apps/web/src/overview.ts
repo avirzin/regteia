@@ -1,40 +1,16 @@
 // Overview: the whole graph in cosmos.gl, colored by issuing body. Data: GET /api/grafo.arrow (nodes + edges).
-// Filters keep the layout stable: hidden norms get size 0 and their links go transparent.
+// Filters keep the layout stable: hidden norms get size 0 and their links go transparent. Changing the language
+// rebuilds the text (filters, legend, panel) in place, without restarting the layout.
 import { Graph, PointShape } from '@cosmos.gl/graph'
 import type { Table } from 'apache-arrow'
-import { api, ErroApi, fmt, fmtData, type NormaDetalhe } from './api'
+import { api, ErroApi, type NormaDetalhe } from './api'
 import { el, esconderDica, mostrarDica } from './charts'
+import { fmt, fmtData, idioma, t, tDinamico } from './i18n'
 
 const GRUPO_VAR = ['--grupo-cmn', '--grupo-bcb', '--grupo-cvm', '--grupo-lei', '--grupo-outros']
 const GRUPO_FORMA = [PointShape.Circle, PointShape.Circle, PointShape.Circle, PointShape.Square, PointShape.Diamond]
-const ESTADO_ROTULO: Record<string, string> = {
-  vigente: 'Vigente',
-  alterada: 'Vigente, alterada',
-  revogada: 'Revogada',
-  externa: 'Fora do acervo',
-}
-const RELACAO_ROTULO: Record<string, string> = {
-  REVOGA: 'Revoga',
-  REVOGA_PARCIAL: 'Revoga parc.',
-  ALTERA: 'Altera',
-  CITA: 'Cita',
-  REGULAMENTA: 'Regulamenta',
-  CONJUNTA: 'Conjunta',
-}
-const DIRECAO_ROTULO: Record<string, string> = {
-  'saida:REVOGA': 'Revoga',
-  'saida:REVOGA_PARCIAL': 'Revoga parcialmente',
-  'saida:ALTERA': 'Altera',
-  'saida:CITA': 'Cita',
-  'saida:REGULAMENTA': 'Fundamenta-se em',
-  'saida:CONJUNTA': 'Conjunta com',
-  'entrada:REVOGA': 'Revogada por',
-  'entrada:REVOGA_PARCIAL': 'Revogada parcialmente por',
-  'entrada:ALTERA': 'Alterada por',
-  'entrada:CITA': 'Citada por',
-  'entrada:REGULAMENTA': 'Base legal de',
-  'entrada:CONJUNTA': 'Conjunta com',
-}
+const estadoRotulo = (e: string) => tDinamico(`estado.${e}`, e)
+const grupoRotulo = (g: string) => tDinamico(`grupo.${g}`, g)
 
 function corRGBA(css: string): [number, number, number, number] {
   const ctx = document.createElement('canvas').getContext('2d')!
@@ -104,10 +80,10 @@ interface Filtro {
   ate: number
 }
 
-function chips(nome: string, itens: { rotulo: string; valor: number; marcado?: boolean }[], onChange: (s: Set<number>) => void): HTMLFieldSetElement {
+function chips(nome: string, itens: { rotulo: string; valor: number }[], atual: Set<number>, onChange: (s: Set<number>) => void): HTMLFieldSetElement {
   const fs = el('fieldset')
   fs.append(el('legend', {}, nome))
-  const sel = new Set(itens.filter((i) => i.marcado !== false).map((i) => i.valor))
+  const sel = new Set(atual)
   for (const it of itens) {
     const lab = el('label', { class: 'chip' })
     const cb = el('input', { type: 'checkbox' })
@@ -134,7 +110,7 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
   const canvasDiv = el('div')
   canvasDiv.style.cssText = 'position:absolute;inset:0'
   const legenda = el('div', { class: 'legenda-grafo' })
-  const status = el('div', { class: 'status-grafo' }, 'Carregando o grafo…')
+  const status = el('div', { class: 'status-grafo' }, t('visao.carregando'))
   const painel = el('aside', { class: 'painel' })
   painel.hidden = true
   visao.append(canvasDiv, legenda, status, painel)
@@ -145,7 +121,7 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     const { nos, arestas } = await api.grafo(comunicados)
     dados = lerDados(nos, arestas)
   } catch (err) {
-    visao.replaceChildren(el('p', { class: 'erro' }, `Não foi possível carregar o grafo: ${String(err)}`))
+    visao.replaceChildren(el('p', { class: 'erro' }, t('visao.erro', { erro: String(err) })))
     return () => {}
   }
 
@@ -189,9 +165,9 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     randomSeed: 42,
     onPointMouseOver: (i, _pos, ev) => {
       const e = ev as MouseEvent | undefined
-      const est = ESTADO_ROTULO[dados.estados[dados.estado[i]]]
+      const est = estadoRotulo(dados.estados[dados.estado[i]])
       const ano = dados.ano[i] ? ` · ${dados.ano[i]}` : ''
-      mostrarDica(e?.clientX ?? 0, e?.clientY ?? 0, dados.titulos[i] ?? dados.ids[i], `${est}${ano} · ${dados.grupos[dados.grupo[i]]}`, `${dados.ids[i]} · ${fmt.format(dados.grau[i])} relações`)
+      mostrarDica(e?.clientX ?? 0, e?.clientY ?? 0, dados.titulos[i] ?? dados.ids[i], `${est}${ano} · ${grupoRotulo(dados.grupos[dados.grupo[i]])}`, `${dados.ids[i]} · ${t('visao.dicaRelacoes', { n: fmt.format(dados.grau[i]) })}`)
     },
     onPointMouseOut: esconderDica,
     onPointClick: (i) => selecionar(i),
@@ -227,7 +203,7 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     graph.setPointSizes(sizes)
     graph.setLinkColors(cores)
     graph.render()
-    status.textContent = `${fmt.format(nVis)} normas · ${fmt.format(lVis)} relações visíveis${comunicados ? '' : ' · comunicados ocultos'}`
+    status.textContent = t('visao.status', { normas: fmt.format(nVis), relacoes: fmt.format(lVis) }) + (comunicados ? '' : ` · ${t('visao.comunicadosOcultos')}`)
     desenharLegenda(contagem)
   }
 
@@ -247,14 +223,16 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
       const m = el('span', { class: `marca-ponto${GRUPO_FORMA[i] === PointShape.Circle ? '' : ' quadrado'}` })
       m.style.background = `var(${GRUPO_VAR[i]})`
       if (GRUPO_FORMA[i] === PointShape.Diamond) m.style.transform = 'rotate(45deg) scale(0.8)'
-      linha.append(m, el('span', {}, g), el('span', {}, fmt.format(contagem[i])))
+      linha.append(m, el('span', {}, grupoRotulo(g)), el('span', {}, fmt.format(contagem[i])))
       legenda.append(linha)
     })
-    legenda.append(el('div', { class: 'linha sec' }, 'Tamanho: número de relações'))
+    legenda.append(el('div', { class: 'linha sec' }, t('visao.legendaTamanho')))
   }
 
+  let mostrada: string | null = null
   function limparSelecao(): void {
     painel.hidden = true
+    mostrada = null
     graph.setConfigPartial({ highlightedPointIndices: undefined, highlightedLinkIndices: undefined, focusedPointIndex: undefined })
   }
 
@@ -270,6 +248,7 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
   }
 
   async function mostrarPainel(ref: string): Promise<void> {
+    mostrada = ref
     painel.hidden = false
     painel.classList.add('carregando')
     let d: NormaDetalhe
@@ -283,23 +262,23 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     }
     painel.classList.remove('carregando')
     const n = d.norma
-    const fechar = el('button', { class: 'botao-fantasma fechar', type: 'button', 'aria-label': 'Fechar' }, '×')
+    const fechar = el('button', { class: 'botao-fantasma fechar', type: 'button', 'aria-label': t('visao.fechar') }, '×')
     fechar.addEventListener('click', limparSelecao)
     const estado = n.externo ? 'externa' : (n.estado ?? '')
-    const selo = el('span', { class: `selo ${estado}` }, ESTADO_ROTULO[estado] ?? estado)
+    const selo = el('span', { class: `selo ${estado}` }, estadoRotulo(estado))
     painel.replaceChildren(fechar, el('h2', {}, n.titulo ?? n.id))
     const meta = el('p', { class: 'nota' })
     meta.append(selo, document.createTextNode(`  ${n.id}${n.data ? ` · ${fmtData(n.data)}` : ''}`))
     painel.append(meta)
     const links = el('p')
-    if (n.fonte_url) links.append(linkSeguro(n.fonte_url, 'Fonte oficial'))
-    if (n.url_arquivo) links.append(document.createTextNode(' · '), linkSeguro(n.url_arquivo, 'Arquivo (versão exata)'))
-    if (n.url_externa) links.append(linkSeguro(n.url_externa, 'Onde está'))
+    if (n.fonte_url) links.append(linkSeguro(n.fonte_url, t('visao.fonteOficial')))
+    if (n.url_arquivo) links.append(document.createTextNode(' · '), linkSeguro(n.url_arquivo, t('visao.arquivo')))
+    if (n.url_externa) links.append(linkSeguro(n.url_externa, t('visao.ondeEsta')))
     painel.append(links)
     if (n.ementa) painel.append(el('p', {}, n.ementa))
     for (const nota of d.notas) painel.append(el('p', { class: 'nota' }, `⚠ ${nota}`))
     for (const g of d.relacoes) {
-      painel.append(el('strong', {}, `${DIRECAO_ROTULO[`${g.direcao}:${g.tipo}`] ?? g.tipo} (${fmt.format(g.total)})`))
+      painel.append(el('strong', {}, `${tDinamico(`direcao.${g.direcao}.${g.tipo}`, g.tipo)} (${fmt.format(g.total)})`))
       const ul = el('ul')
       for (const v of g.itens) {
         const li = el('li')
@@ -310,24 +289,22 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
           if (j !== undefined) selecionar(j, true)
           else mostrarPainel(v.norma.id)
         })
-        const est = v.norma.externo ? 'fora do acervo' : (ESTADO_ROTULO[v.norma.estado ?? ''] ?? '').toLowerCase()
-        li.append(a, document.createTextNode(` · ${est}${v.desde ? ` · a partir de ${fmtData(v.desde)}` : ''}`))
+        const est = estadoRotulo(v.norma.externo ? 'externa' : (v.norma.estado ?? '')).toLowerCase()
+        li.append(a, document.createTextNode(` · ${est}${v.desde ? ` · ${t('visao.aPartirDe', { data: fmtData(v.desde) })}` : ''}`))
         ul.append(li)
       }
-      if (g.total > g.itens.length) ul.append(el('li', { class: 'nota' }, `… e mais ${fmt.format(g.total - g.itens.length)}`))
+      if (g.total > g.itens.length) ul.append(el('li', { class: 'nota' }, t('visao.eMais', { n: fmt.format(g.total - g.itens.length) })))
       painel.append(ul)
     }
-    painel.append(el('p', { class: 'nota' }, d.aviso))
+    // d.aviso is the API's disclaimer (Portuguese); other languages show the same text from the locale file.
+    painel.append(el('p', { class: 'nota' }, idioma() === 'pt-BR' ? d.aviso : t('app.aviso')))
   }
 
-  // ---- filter row ----
-  const busca = el('form')
-  const entrada = el('input', { type: 'search', placeholder: 'Encontrar norma: Resolução BCB 520, ICVM 400…', size: '36' })
-  busca.append(entrada)
-  busca.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const ref = entrada.value.trim()
-    if (!ref) return
+  // ---- filter row (rebuilt from the current filter state when the language changes) ----
+  const decadas: number[] = []
+  for (let d = decadaMin; d <= decadaMax; d += 10) decadas.push(d)
+
+  async function encontrar(ref: string): Promise<void> {
     try {
       const d = await api.norma(ref, 1)
       const j = dados.indice.get(d.norma.id)
@@ -335,65 +312,78 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
       else mostrarPainel(d.norma.id)
     } catch (err) {
       painel.hidden = false
+      mostrada = null
       const det = err instanceof ErroApi ? (err.detalhe as { sugestoes?: { id: string; titulo: string }[] }) : undefined
       painel.replaceChildren(el('p', { class: 'erro' }, err instanceof Error ? err.message : String(err)))
       for (const s of det?.sugestoes ?? []) {
         const a = el('a', { href: '#' }, s.titulo ?? s.id)
         a.addEventListener('click', (ev) => {
           ev.preventDefault()
-          entrada.value = s.id
-          busca.requestSubmit()
+          void encontrar(s.id)
         })
         painel.append(el('div'), a)
       }
     }
-  })
-
-  const decadas: number[] = []
-  for (let d = decadaMin; d <= decadaMax; d += 10) decadas.push(d)
-  const selDe = el('select', { 'aria-label': 'Década inicial' })
-  const selAte = el('select', { 'aria-label': 'Década final' })
-  for (const d of decadas) {
-    selDe.append(el('option', { value: String(d) }, `${d}s`))
-    selAte.append(el('option', { value: String(d) }, `${d}s`))
   }
-  selDe.value = String(decadaMin)
-  selAte.value = String(decadaMax)
-  const onDecada = () => {
-    filtro.de = Math.min(Number(selDe.value), Number(selAte.value))
-    filtro.ate = Math.max(Number(selDe.value), Number(selAte.value))
-    aplicarFiltro()
+
+  let textoBusca = ''
+  function montarFiltros(): void {
+    const busca = el('form')
+    const entrada = el('input', { type: 'search', placeholder: t('visao.busca'), size: '36' })
+    entrada.value = textoBusca
+    entrada.addEventListener('input', () => (textoBusca = entrada.value))
+    busca.append(entrada)
+    busca.addEventListener('submit', (e) => {
+      e.preventDefault()
+      const ref = entrada.value.trim()
+      if (ref) void encontrar(ref)
+    })
+
+    const selDe = el('select', { 'aria-label': t('visao.decadaInicial') })
+    const selAte = el('select', { 'aria-label': t('visao.decadaFinal') })
+    for (const d of decadas) {
+      selDe.append(el('option', { value: String(d) }, t('visao.decada', { d })))
+      selAte.append(el('option', { value: String(d) }, t('visao.decada', { d })))
+    }
+    selDe.value = String(filtro.de)
+    selAte.value = String(filtro.ate)
+    const onDecada = () => {
+      filtro.de = Math.min(Number(selDe.value), Number(selAte.value))
+      filtro.ate = Math.max(Number(selDe.value), Number(selAte.value))
+      aplicarFiltro()
+    }
+    selDe.addEventListener('change', onDecada)
+    selAte.addEventListener('change', onDecada)
+    const fsDec = el('fieldset')
+    fsDec.append(el('legend', {}, t('visao.decadas')), selDe, el('span', {}, t('visao.decadaAte')), selAte)
+
+    const comLab = el('label', { class: 'chip' })
+    const comCb = el('input', { type: 'checkbox' })
+    comCb.checked = comunicados
+    comLab.append(comCb, document.createTextNode(t('visao.incluirComunicados')))
+    comCb.addEventListener('change', () => {
+      window.dispatchEvent(new CustomEvent('regteia:comunicados', { detail: comCb.checked }))
+    })
+
+    filtros.replaceChildren(
+      busca,
+      chips(t('visao.filtroOrgao'), dados.grupos.map((g, i) => ({ rotulo: grupoRotulo(g), valor: i })), filtro.grupos, (s) => {
+        filtro.grupos = s
+        aplicarFiltro()
+      }),
+      chips(t('visao.filtroSituacao'), dados.estados.map((e, i) => ({ rotulo: estadoRotulo(e), valor: i })), filtro.estados, (s) => {
+        filtro.estados = s
+        aplicarFiltro()
+      }),
+      chips(t('visao.filtroRelacao'), dados.relacoes.map((r, i) => ({ rotulo: tDinamico(`relacao.${r}`, r), valor: i })), filtro.relacoes, (s) => {
+        filtro.relacoes = s
+        aplicarFiltro()
+      }),
+      fsDec,
+      comLab,
+    )
   }
-  selDe.addEventListener('change', onDecada)
-  selAte.addEventListener('change', onDecada)
-  const fsDec = el('fieldset')
-  fsDec.append(el('legend', {}, 'Décadas'), selDe, el('span', {}, 'a'), selAte)
-
-  const comLab = el('label', { class: 'chip' })
-  const comCb = el('input', { type: 'checkbox' })
-  comCb.checked = comunicados
-  comLab.append(comCb, document.createTextNode('Incluir comunicados'))
-  comCb.addEventListener('change', () => {
-    window.dispatchEvent(new CustomEvent('regteia:comunicados', { detail: comCb.checked }))
-  })
-
-  filtros.append(
-    busca,
-    chips('Órgão', dados.grupos.map((g, i) => ({ rotulo: g, valor: i })), (s) => {
-      filtro.grupos = s
-      aplicarFiltro()
-    }),
-    chips('Situação', dados.estados.map((e, i) => ({ rotulo: ESTADO_ROTULO[e] ?? e, valor: i })), (s) => {
-      filtro.estados = s
-      aplicarFiltro()
-    }),
-    chips('Relação', dados.relacoes.map((r, i) => ({ rotulo: RELACAO_ROTULO[r] ?? r, valor: i })), (s) => {
-      filtro.relacoes = s
-      aplicarFiltro()
-    }),
-    fsDec,
-    comLab,
-  )
+  montarFiltros()
 
   // ---- data into the graph ----
   await graph.ready
@@ -408,9 +398,16 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
   visao.classList.remove('carregando')
 
   const onTema = () => aplicarCores()
+  const onIdioma = () => {
+    montarFiltros()
+    aplicarFiltro()
+    if (!painel.hidden && mostrada) void mostrarPainel(mostrada)
+  }
   window.addEventListener('regteia:tema', onTema)
+  window.addEventListener('regteia:idioma', onIdioma)
   return () => {
     window.removeEventListener('regteia:tema', onTema)
+    window.removeEventListener('regteia:idioma', onIdioma)
     esconderDica()
     graph.destroy()
   }

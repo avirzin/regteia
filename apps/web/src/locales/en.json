@@ -1,0 +1,155 @@
+{
+  "app": {
+    "nav": { "visaoGeral": "Overview", "estatisticas": "Statistics" },
+    "tema": { "botao": "Theme", "rotulo": "Toggle light/dark theme" },
+    "idioma": { "grupo": "Language", "pt-BR": "Português (Brasil)", "en": "English" },
+    "aviso": "Automated conversion, for information only. It does not replace the Diário Oficial da União or the official BCB and CVM portals; always check the official source linked."
+  },
+  "graficos": {
+    "verTabela": "Show table",
+    "normas": "Norms",
+    "total": "Total",
+    "pctTotal": "{pct}% of total"
+  },
+  "grupo": {
+    "CMN": "CMN",
+    "BCB": "BCB",
+    "CVM": "CVM",
+    "Lei federal": "Federal law",
+    "Outros": "Other"
+  },
+  "estado": {
+    "vigente": "In force",
+    "alterada": "In force, amended",
+    "revogada": "Revoked",
+    "externa": "Outside the corpus"
+  },
+  "relacao": {
+    "REVOGA": "Revokes",
+    "REVOGA_PARCIAL": "Partly revokes",
+    "ALTERA": "Amends",
+    "CITA": "Cites",
+    "REGULAMENTA": "Regulates",
+    "CONJUNTA": "Joint"
+  },
+  "direcao": {
+    "saida": {
+      "REVOGA": "Revokes",
+      "REVOGA_PARCIAL": "Partly revokes",
+      "ALTERA": "Amends",
+      "CITA": "Cites",
+      "REGULAMENTA": "Based on",
+      "CONJUNTA": "Joint with"
+    },
+    "entrada": {
+      "REVOGA": "Revoked by",
+      "REVOGA_PARCIAL": "Partly revoked by",
+      "ALTERA": "Amended by",
+      "CITA": "Cited by",
+      "REGULAMENTA": "Legal basis for",
+      "CONJUNTA": "Joint with"
+    }
+  },
+  "visao": {
+    "carregando": "Loading the graph…",
+    "erro": "Could not load the graph: {erro}",
+    "grafoMudou": "the graph changed between the two requests (new ingest); reload",
+    "status": "{normas} norms · {relacoes} relations visible",
+    "comunicadosOcultos": "notices (comunicados) hidden",
+    "dicaRelacoes": "relations: {n}",
+    "legendaTamanho": "Size: number of relations",
+    "fechar": "Close",
+    "fonteOficial": "Official source",
+    "arquivo": "File (exact version)",
+    "ondeEsta": "Where it is",
+    "aPartirDe": "from {data}",
+    "eMais": "… and {n} more",
+    "busca": "Find a norm: Resolução BCB 520, ICVM 400…",
+    "filtroOrgao": "Issuer",
+    "filtroSituacao": "Status",
+    "filtroRelacao": "Relation",
+    "decadas": "Decades",
+    "decadaInicial": "First decade",
+    "decadaFinal": "Last decade",
+    "decadaAte": "to",
+    "decada": "{d}s",
+    "incluirComunicados": "Include notices (comunicados)"
+  },
+  "est": {
+    "erro": "Could not load the statistics: {erro}",
+    "acervo": { "titulo": "Corpus", "sub": "Norms with a file in the normas-bcb and normas-cvm corpora." },
+    "kpi": {
+      "normas": "norms",
+      "vigentes": "in force",
+      "alteradas": "amended (consolidated text)",
+      "revogadas": "revoked",
+      "relacoes": "relations between norms",
+      "stubs": "referenced norms outside the corpus",
+      "naoResolvidos": "unresolved references",
+      "ocr": "texts obtained by OCR"
+    },
+    "estado": { "vigente": "In force", "alterada": "Amended", "revogada": "Revoked" },
+    "orgao": { "titulo": "Status by issuer", "sub": "Current status of each norm, according to the corpus graph." },
+    "serie": {
+      "titulo": "Norms by series",
+      "sub": "The 15 largest series. BCB comunicados (notices) are mostly auction announcements.",
+      "demais": "Other {n} series",
+      "extra": "in force {v} · amended {a} · revoked {r}",
+      "cabecalho": "Series"
+    },
+    "decada": { "titulo": "Norms by decade", "sub": "By each norm's date. All issuers.", "cabecalho": "Decade" },
+    "relacao": {
+      "titulo": "Relations by type",
+      "sub": "{com} of {total} relations have a start date (“desde”).",
+      "cabecalho": "Relation",
+      "valor": "Relations",
+      "CITA": "Cites",
+      "REGULAMENTA": "Regulates (legal basis)",
+      "REVOGA": "Revokes",
+      "ALTERA": "Amends",
+      "REVOGA_PARCIAL": "Partly revokes",
+      "CONJUNTA": "Joint"
+    },
+    "fonte": {
+      "titulo": "Relations by source field",
+      "sub": "The frontmatter field upstream extracted each relation from.",
+      "cabecalho": "Field"
+    },
+    "stubs": {
+      "titulo": "Norms outside the corpus",
+      "sub": "Referenced by norms in the corpus, but with no text here (federal laws arrive in roadmap step 9).",
+      "cabecalho": "Type",
+      "prefixo": {
+        "ext": "Other bodies (ext)",
+        "lei": "Ordinary laws",
+        "dec": "Decrees",
+        "mpv": "Provisional measures",
+        "del": "Decree-laws",
+        "lcp": "Complementary laws",
+        "ldl": "Delegated laws",
+        "bcb": "BCB without a file",
+        "cvm": "CVM without a file"
+      }
+    },
+    "naoResolvidos": {
+      "titulo": "Unresolved references",
+      "sub": "Upstream could not link these references to a norm. “target”: an ID with no norm; “pattern”: text not recognized.",
+      "cabecalho": "Source",
+      "valor": "References",
+      "ocorrencias": "occurrences: {n}",
+      "alvo": "target",
+      "padrao": "pattern"
+    },
+    "ingestao": {
+      "titulo": "Last ingest",
+      "sub": "Exact corpus version loaded in the database. Updated hourly.",
+      "acervo": "Corpus",
+      "commit": "Commit",
+      "quando": "When",
+      "modo": "Mode",
+      "arquivos": "Files",
+      "semParser": "Amendment (atualizacoes) parser failures: the parser doesn't exist yet (roadmap, step 7).",
+      "falhas": "Amendment (atualizacoes) parser failures: {n}"
+    }
+  }
+}

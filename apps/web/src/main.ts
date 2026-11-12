@@ -1,24 +1,26 @@
 import './style.css'
+import { iniciarIdioma, t } from './i18n'
 import { paginaVisaoGeral } from './overview'
 import { paginaEstatisticas } from './stats'
 
 const main = document.getElementById('app')!
 let desmontar: (() => void) | undefined
 let comunicados = false
+let pagina: 'estatisticas' | 'visao-geral' = 'visao-geral'
 
 async function rota(): Promise<void> {
   desmontar?.()
   desmontar = undefined
-  const pagina = location.hash.startsWith('#/estatisticas') ? 'estatisticas' : 'visao-geral'
+  pagina = location.hash.startsWith('#/estatisticas') ? 'estatisticas' : 'visao-geral'
   document.querySelectorAll<HTMLAnchorElement>('nav a').forEach((a) => {
     if (a.dataset.rota === pagina) a.setAttribute('aria-current', 'page')
     else a.removeAttribute('aria-current')
   })
   if (pagina === 'estatisticas') {
-    document.title = 'Estatísticas · Regteia'
+    document.title = `${t('app.nav.estatisticas')} · Regteia`
     await paginaEstatisticas(main)
   } else {
-    document.title = 'Visão geral · Regteia'
+    document.title = `${t('app.nav.visaoGeral')} · Regteia`
     desmontar = await paginaVisaoGeral(main, comunicados)
   }
 }
@@ -35,6 +37,13 @@ document.getElementById('tema')!.addEventListener('click', () => {
   window.dispatchEvent(new Event('regteia:tema'))
 })
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => window.dispatchEvent(new Event('regteia:tema')))
+
+// Language: the overview re-translates itself in place (keeps the layout); the dashboard is cheap to redraw.
+iniciarIdioma()
+window.addEventListener('regteia:idioma', () => {
+  document.title = `${t(pagina === 'estatisticas' ? 'app.nav.estatisticas' : 'app.nav.visaoGeral')} · Regteia`
+  if (pagina === 'estatisticas') void rota()
+})
 
 window.addEventListener('regteia:comunicados', (e) => {
   comunicados = (e as CustomEvent<boolean>).detail

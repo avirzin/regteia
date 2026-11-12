@@ -1,7 +1,9 @@
 // Statistics dashboard: coverage and health of the corpus, all from GET /api/estatisticas (computed live).
-import { api, fmt, type Estatisticas } from './api'
+import { api, type Estatisticas } from './api'
+import { fmt, fmtDataHora, t, tDinamico } from './i18n'
 import { barras, colunas, el, empilhadas, tabelaSimples, type Linha } from './charts'
 
+// Series names are the official instrument names: they stay in Portuguese in every language.
 const SERIES: Record<string, string> = {
   'bcb:comunicado': 'Comunicado (BCB)',
   'bcb:resolucao-cmn': 'Resolução CMN',
@@ -24,26 +26,6 @@ const SERIES: Record<string, string> = {
   'bcb:ato-normativo-conjunto': 'Ato Normativo Conjunto',
   'bcb:resolucao-conjunta': 'Resolução Conjunta',
 }
-const RELACOES: Record<string, string> = {
-  CITA: 'Cita',
-  REGULAMENTA: 'Regulamenta (base legal)',
-  REVOGA: 'Revoga',
-  ALTERA: 'Altera',
-  REVOGA_PARCIAL: 'Revoga parcialmente',
-  CONJUNTA: 'Conjunta',
-}
-const PREFIXOS: Record<string, string> = {
-  ext: 'Outros órgãos (ext)',
-  lei: 'Leis ordinárias',
-  dec: 'Decretos',
-  mpv: 'Medidas provisórias',
-  del: 'Decretos-lei',
-  lcp: 'Leis complementares',
-  ldl: 'Leis delegadas',
-  bcb: 'BCB sem arquivo',
-  cvm: 'CVM sem arquivo',
-}
-
 function cartao(titulo: string, sub: string, largo = false): [HTMLElement, HTMLElement] {
   const c = el('section', { class: largo ? 'cartao largo' : 'cartao' })
   const corpo = el('div')
@@ -61,99 +43,90 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
   const graficos: (() => void)[] = []
   raiz.replaceChildren()
 
-  const [cKpi, kpis] = cartao('Acervo', 'Normas com arquivo nos acervos normas-bcb e normas-cvm.', true)
+  const [cKpi, kpis] = cartao(t('est.acervo.titulo'), t('est.acervo.sub'), true)
   kpis.className = 'kpis'
   kpis.append(
-    kpi('normas', e.normas, true),
-    kpi('vigentes', e.por_estado.vigente ?? 0),
-    kpi('alteradas (texto consolidado)', e.por_estado.alterada ?? 0),
-    kpi('revogadas', e.por_estado.revogada ?? 0),
-    kpi('relações entre normas', e.arestas),
-    kpi('normas referenciadas fora do acervo', e.stubs),
-    kpi('referências não resolvidas', e.nao_resolvidos),
-    kpi('textos obtidos por OCR', e.ocr),
+    kpi(t('est.kpi.normas'), e.normas, true),
+    kpi(t('est.kpi.vigentes'), e.por_estado.vigente ?? 0),
+    kpi(t('est.kpi.alteradas'), e.por_estado.alterada ?? 0),
+    kpi(t('est.kpi.revogadas'), e.por_estado.revogada ?? 0),
+    kpi(t('est.kpi.relacoes'), e.arestas),
+    kpi(t('est.kpi.stubs'), e.stubs),
+    kpi(t('est.kpi.naoResolvidos'), e.nao_resolvidos),
+    kpi(t('est.kpi.ocr'), e.ocr),
   )
   raiz.append(cKpi)
 
   const partes = [
-    { chave: 'vigente', rotulo: 'Vigente', cor: 'var(--estado-vigente)' },
-    { chave: 'alterada', rotulo: 'Alterada', cor: 'var(--estado-alterada)' },
-    { chave: 'revogada', rotulo: 'Revogada', cor: 'var(--estado-revogada)' },
+    { chave: 'vigente', rotulo: t('est.estado.vigente'), cor: 'var(--estado-vigente)' },
+    { chave: 'alterada', rotulo: t('est.estado.alterada'), cor: 'var(--estado-alterada)' },
+    { chave: 'revogada', rotulo: t('est.estado.revogada'), cor: 'var(--estado-revogada)' },
   ]
-  const [cOrg, org] = cartao('Situação por órgão', 'Estado atual de cada norma, segundo o grafo do acervo.', true)
+  const [cOrg, org] = cartao(t('est.orgao.titulo'), t('est.orgao.sub'), true)
   raiz.append(cOrg)
   const linhasOrg = Object.entries(e.por_orgao)
     .map(([rotulo, partes]) => ({ rotulo, partes }))
     .sort((a, b) => Object.values(b.partes).reduce((x, y) => x + y, 0) - Object.values(a.partes).reduce((x, y) => x + y, 0))
   graficos.push(() => empilhadas(org, linhasOrg, partes))
 
-  const [cSer, ser] = cartao(
-    'Normas por série',
-    'As 15 maiores séries. Comunicados do BCB são, em sua maioria, avisos de leilão.',
-  )
+  const [cSer, ser] = cartao(t('est.serie.titulo'), t('est.serie.sub'))
   raiz.append(cSer)
   const todas: Linha[] = e.por_serie.map((s) => {
     const chave = `${s.acervo}:${s.serie}`
     return {
       rotulo: SERIES[chave] ?? chave,
       valor: s.total,
-      extra: `vigentes ${fmt.format(s.vigente)} · alteradas ${fmt.format(s.alterada)} · revogadas ${fmt.format(s.revogada)}`,
+      extra: t('est.serie.extra', { v: fmt.format(s.vigente), a: fmt.format(s.alterada), r: fmt.format(s.revogada) }),
     }
   })
   const top = todas.slice(0, 15)
   const resto = todas.slice(15)
-  if (resto.length) top.push({ rotulo: `Demais ${resto.length} séries`, valor: resto.reduce((a, l) => a + l.valor, 0) })
-  graficos.push(() => barras(ser, top, { tabelaLinhas: todas, cabecalho: ['Série', 'Normas'] }))
+  if (resto.length) top.push({ rotulo: t('est.serie.demais', { n: fmt.format(resto.length) }), valor: resto.reduce((a, l) => a + l.valor, 0) })
+  graficos.push(() => barras(ser, top, { tabelaLinhas: todas, cabecalho: [t('est.serie.cabecalho'), t('graficos.normas')] }))
 
-  const [cDec, dec] = cartao('Normas por década', 'Pela data de cada norma. Todos os órgãos.')
+  const [cDec, dec] = cartao(t('est.decada.titulo'), t('est.decada.sub'))
   raiz.append(cDec)
   const porDecada = new Map<number, number>()
   for (const d of e.por_decada) porDecada.set(d.decada, (porDecada.get(d.decada) ?? 0) + d.n)
-  const linhasDec = [...porDecada.entries()].sort((a, b) => a[0] - b[0]).map(([d, n]) => ({ rotulo: `${d}s`, valor: n }))
-  graficos.push(() => colunas(dec, linhasDec, { cabecalho: ['Década', 'Normas'] }))
+  const linhasDec = [...porDecada.entries()].sort((a, b) => a[0] - b[0]).map(([d, n]) => ({ rotulo: t('visao.decada', { d }), valor: n }))
+  graficos.push(() => colunas(dec, linhasDec, { cabecalho: [t('est.decada.cabecalho'), t('graficos.normas')] }))
 
   const [cRel, rel] = cartao(
-    'Relações por tipo',
-    `${fmt.format(e.arestas_com_desde)} de ${fmt.format(e.arestas)} relações têm data de início (“desde”).`,
+    t('est.relacao.titulo'),
+    t('est.relacao.sub', { com: fmt.format(e.arestas_com_desde), total: fmt.format(e.arestas) }),
   )
   raiz.append(cRel)
-  const linhasRel = Object.entries(e.arestas_por_relacao).map(([k, v]) => ({ rotulo: RELACOES[k] ?? k, valor: v }))
-  graficos.push(() => barras(rel, linhasRel, { cabecalho: ['Relação', 'Relações'] }))
+  const linhasRel = Object.entries(e.arestas_por_relacao).map(([k, v]) => ({ rotulo: tDinamico(`est.relacao.${k}`, k), valor: v }))
+  graficos.push(() => barras(rel, linhasRel, { cabecalho: [t('est.relacao.cabecalho'), t('est.relacao.valor')] }))
 
-  const [cFon, fon] = cartao('Relações por origem', 'Campo do cabeçalho de onde o acervo extraiu cada relação.')
+  const [cFon, fon] = cartao(t('est.fonte.titulo'), t('est.fonte.sub'))
   raiz.append(cFon)
   const linhasFon = Object.entries(e.arestas_por_fonte).map(([k, v]) => ({ rotulo: k.replaceAll('+', ' + '), valor: v }))
-  graficos.push(() => barras(fon, linhasFon, { rotuloLargura: 230, cabecalho: ['Origem', 'Relações'] }))
+  graficos.push(() => barras(fon, linhasFon, { rotuloLargura: 230, cabecalho: [t('est.fonte.cabecalho'), t('est.relacao.valor')] }))
 
-  const [cStub, stub] = cartao(
-    'Normas fora do acervo',
-    'Referenciadas por normas do acervo, mas sem texto aqui (leis federais chegam no passo 9 do roadmap).',
-  )
+  const [cStub, stub] = cartao(t('est.stubs.titulo'), t('est.stubs.sub'))
   raiz.append(cStub)
-  const linhasStub = Object.entries(e.stubs_por_prefixo).map(([k, v]) => ({ rotulo: PREFIXOS[k] ?? k, valor: v }))
-  graficos.push(() => barras(stub, linhasStub, { cabecalho: ['Tipo', 'Normas'] }))
+  const linhasStub = Object.entries(e.stubs_por_prefixo).map(([k, v]) => ({ rotulo: tDinamico(`est.stubs.prefixo.${k}`, k), valor: v }))
+  graficos.push(() => barras(stub, linhasStub, { cabecalho: [t('est.stubs.cabecalho'), t('graficos.normas')] }))
 
-  const [cNr, nr] = cartao(
-    'Referências não resolvidas',
-    'O acervo não conseguiu ligar estas referências a uma norma. “alvo”: identificador sem norma; “padrão”: texto não reconhecido.',
-  )
+  const [cNr, nr] = cartao(t('est.naoResolvidos.titulo'), t('est.naoResolvidos.sub'))
   raiz.append(cNr)
   const linhasNr = e.nao_resolvidos_detalhe.map((x) => ({
-    rotulo: `${x.upstream.replace('normas-', '').toUpperCase()} · ${x.campo.replace('_', ' ')} · ${x.tipo}`,
+    rotulo: `${x.upstream.replace('normas-', '').toUpperCase()} · ${x.campo.replace('_', ' ')} · ${tDinamico(`est.naoResolvidos.${x.tipo}`, x.tipo)}`,
     valor: x.n,
-    extra: `${fmt.format(x.ocorrencias)} ocorrências`,
+    extra: t('est.naoResolvidos.ocorrencias', { n: fmt.format(x.ocorrencias) }),
   }))
-  graficos.push(() => barras(nr, linhasNr, { rotuloLargura: 260, cabecalho: ['Origem', 'Referências'] }))
+  graficos.push(() => barras(nr, linhasNr, { rotuloLargura: 260, cabecalho: [t('est.naoResolvidos.cabecalho'), t('est.naoResolvidos.valor')] }))
 
-  const [cIng, ing] = cartao('Última ingestão', 'Versão exata dos acervos carregada no banco. Atualizada a cada hora.', true)
+  const [cIng, ing] = cartao(t('est.ingestao.titulo'), t('est.ingestao.sub'), true)
   raiz.append(cIng)
   ing.append(
     tabelaSimples(
-      ['Acervo', 'Commit', 'Quando', 'Modo', 'Arquivos'],
+      ['acervo', 'commit', 'quando', 'modo', 'arquivos'].map((k) => tDinamico(`est.ingestao.${k}`, k)),
       e.ingestoes.map((i) => {
         const code = el('code', {}, i.sha ? i.sha.slice(0, 12) : '-')
         if (i.sha) code.title = i.sha
-        const quando = i.em ? new Date(i.em).toLocaleString('pt-BR') : '-'
+        const quando = i.em ? fmtDataHora(i.em) : '-'
         return [i.fonte, code, quando, i.modo ?? '-', i.arquivos ?? 0]
       }),
     ),
@@ -161,17 +134,17 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
       'p',
       { class: 'sub' },
       e.falhas_atualizacoes === null
-        ? 'Falhas do parser de atualizações: o parser ainda não existe (roadmap, passo 7).'
-        : `Falhas do parser de atualizações: ${fmt.format(e.falhas_atualizacoes)}`,
+        ? t('est.ingestao.semParser')
+        : t('est.ingestao.falhas', { n: fmt.format(e.falhas_atualizacoes) }),
     ),
   )
 
   const render = () => graficos.forEach((g) => g())
   render()
-  let t = 0
+  let espera = 0
   new ResizeObserver(() => {
-    clearTimeout(t)
-    t = window.setTimeout(render, 120)
+    clearTimeout(espera)
+    espera = window.setTimeout(render, 120)
   }).observe(raiz)
 }
 
@@ -183,6 +156,6 @@ export async function paginaEstatisticas(main: HTMLElement): Promise<void> {
     raiz.classList.remove('carregando')
     desenhar(raiz, e)
   } catch (err) {
-    raiz.replaceChildren(el('p', { class: 'erro' }, `Não foi possível carregar as estatísticas: ${String(err)}`))
+    raiz.replaceChildren(el('p', { class: 'erro' }, t('est.erro', { erro: String(err) })))
   }
 }

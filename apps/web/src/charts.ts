@@ -1,7 +1,7 @@
 // Minimal SVG charts following the dataviz mark specs: bars <= 24px, 4px rounded data-end (square at the
 // baseline), 2px surface gap between touching fills, hairline grid, text in ink tokens, per-mark tooltip on
 // hover and focus, and a table view for every chart. Labels are inserted with textContent only.
-import { fmt, fmtCompacto } from './api'
+import { fmt, fmtCompacto, localeIntl, t } from './i18n'
 
 const NS = 'http://www.w3.org/2000/svg'
 const BAR = 18 // bar thickness (<= 24)
@@ -90,18 +90,18 @@ function fmtTick(v: number, max: number): string {
 
 function tabela(cabecalho: string[], linhas: (string | number)[][]): HTMLDetailsElement {
   const d = el('details', { class: 'tabela' })
-  d.append(el('summary', {}, 'Ver tabela'))
-  const t = el('table')
+  d.append(el('summary', {}, t('graficos.verTabela')))
+  const tb = el('table')
   const trh = el('tr')
   cabecalho.forEach((c, i) => trh.append(el('th', i > 0 ? { class: 'num' } : {}, c)))
-  t.append(el('thead'), el('tbody'))
-  t.tHead!.append(trh)
+  tb.append(el('thead'), el('tbody'))
+  tb.tHead!.append(trh)
   for (const l of linhas) {
     const tr = el('tr')
     l.forEach((c, i) => tr.append(el('td', typeof c === 'number' ? { class: 'num' } : i > 0 ? { class: 'num' } : {}, typeof c === 'number' ? fmt.format(c) : c)))
-    t.tBodies[0].append(tr)
+    tb.tBodies[0].append(tr)
   }
-  d.append(t)
+  d.append(tb)
   return d
 }
 
@@ -146,7 +146,7 @@ export function barras(alvo: HTMLElement, linhas: Linha[], opts: { cor?: string;
     svg.append(g)
   })
   svg.append(s('line', { class: 'base', x1: x(0), x2: x(0), y1: 0, y2: linhas.length * passo }))
-  const cab = opts.cabecalho ?? ['', 'Normas']
+  const cab = opts.cabecalho ?? ['', t('graficos.normas')]
   alvo.replaceChildren(svg, tabela(cab, (opts.tabelaLinhas ?? linhas).map((l) => [l.rotulo, l.valor])))
 }
 
@@ -201,8 +201,8 @@ export function empilhadas(alvo: HTMLElement, linhas: { rotulo: string; partes: 
       const g = s('g', { class: 'marca' })
       g.append(s('rect', { class: 'alvo', x: x0, y: y - 6, width: Math.max(x1 - x0, 4), height: passo }))
       g.append(s('path', { d: barraH(x0, Math.max(x1, x0 + 0.5), y, BAR, j === presentes.length - 1), fill: p.cor }))
-      const pct = ((v / totais[i]) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-      ligarDica(g, fmt.format(v), `${l.rotulo} · ${p.rotulo}`, `${pct}% do total`)
+      const pct = ((v / totais[i]) * 100).toLocaleString(localeIntl(), { maximumFractionDigits: 1 })
+      ligarDica(g, fmt.format(v), `${l.rotulo} · ${p.rotulo}`, t('graficos.pctTotal', { pct }))
       svg.append(g)
     })
     const tot = s('text', { class: 'valor-barra', x: x(totais[i]) + 6, y: y + BAR / 2 + 4 })
@@ -214,7 +214,7 @@ export function empilhadas(alvo: HTMLElement, linhas: { rotulo: string; partes: 
     legenda,
     svg,
     tabela(
-      ['', ...partes.map((p) => p.rotulo), 'Total'],
+      ['', ...partes.map((p) => p.rotulo), t('graficos.total')],
       linhas.map((l, i) => [l.rotulo, ...partes.map((p) => l.partes[p.chave] ?? 0), totais[i]]),
     ),
   )
@@ -260,7 +260,7 @@ export function colunas(alvo: HTMLElement, linhas: Linha[], opts: { cabecalho?: 
     svg.append(g)
   })
   svg.append(s('line', { class: 'base', x1: esq, x2: largura - 8, y1: base, y2: base }))
-  alvo.replaceChildren(svg, tabela(opts.cabecalho ?? ['', 'Normas'], linhas.map((l) => [l.rotulo, l.valor])))
+  alvo.replaceChildren(svg, tabela(opts.cabecalho ?? ['', t('graficos.normas')], linhas.map((l) => [l.rotulo, l.valor])))
 }
 
 export function tabelaSimples(cabecalho: string[], linhas: (string | number | Node)[][]): HTMLTableElement {

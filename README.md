@@ -85,6 +85,10 @@ At `http://127.0.0.1:8080`:
 Frontend development: `uv run regteia-server` (API on :8080), then `cd apps/web && npm install && npm run dev`
 (http://127.0.0.1:5173, proxies `/api`).
 
+The interface is in Portuguese and English (flags in the header). Strings live in `apps/web/src/locales/*.json`;
+to add a language, copy `pt-BR.json`, translate the values and register it in `src/i18n.ts`. The build fails if
+a locale file is missing a key. Corpus data (titles, ementas, series names, upstream notes) is never translated.
+
 ## Quick start
 
 Requirements: Docker, [uv](https://docs.astral.sh/uv/).

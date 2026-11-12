@@ -9,13 +9,33 @@
     <header class="topo">
       <a class="marca" href="#/">Regteia</a>
       <nav>
-        <a href="#/" data-rota="visao-geral">Visão geral</a>
-        <a href="#/estatisticas" data-rota="estatisticas">Estatísticas</a>
+        <a href="#/" data-rota="visao-geral" data-i18n="app.nav.visaoGeral">Visão geral</a>
+        <a href="#/estatisticas" data-rota="estatisticas" data-i18n="app.nav.estatisticas">Estatísticas</a>
       </nav>
-      <button id="tema" type="button" class="botao-fantasma" aria-label="Alternar tema claro/escuro">Tema</button>
+      <div class="idiomas" role="group" data-i18n-aria-label="app.idioma.grupo">
+        <button type="button" class="bandeira" data-idioma="pt-BR" data-i18n-title="app.idioma.pt-BR"
+          data-i18n-aria-label="app.idioma.pt-BR" aria-pressed="false">
+          <svg viewBox="0 0 20 14" width="20" height="14" aria-hidden="true">
+            <rect width="20" height="14" fill="#009c3b" />
+            <path d="M10 1.6 18.4 7 10 12.4 1.6 7Z" fill="#ffdf00" />
+            <circle cx="10" cy="7" r="3.2" fill="#002776" />
+          </svg>
+        </button>
+        <button type="button" class="bandeira" data-idioma="en" data-i18n-title="app.idioma.en"
+          data-i18n-aria-label="app.idioma.en" aria-pressed="false">
+          <svg viewBox="0 0 19 13" width="20" height="14" preserveAspectRatio="none" aria-hidden="true">
+            <rect width="19" height="13" fill="#fff" />
+            <path d="M0 0h19v1H0zM0 2h19v1H0zM0 4h19v1H0zM0 6h19v1H0zM0 8h19v1H0zM0 10h19v1H0zM0 12h19v1H0z"
+              fill="#b22234" />
+            <rect width="7.6" height="7" fill="#3c3b6e" />
+          </svg>
+        </button>
+      </div>
+      <button id="tema" type="button" class="botao-fantasma" data-i18n="app.tema.botao"
+        data-i18n-aria-label="app.tema.rotulo" aria-label="Alternar tema claro/escuro">Tema</button>
     </header>
     <main id="app"></main>
-    <footer class="aviso" id="aviso">
+    <footer class="aviso" id="aviso" data-i18n="app.aviso">
       Conversão automatizada, apenas informativa. Não substitui o Diário Oficial da União nem os portais oficiais do
       BCB e da CVM; confira sempre a fonte oficial indicada.
     </footer>
