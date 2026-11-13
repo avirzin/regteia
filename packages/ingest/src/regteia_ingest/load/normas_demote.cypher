@@ -7,7 +7,7 @@ CALL (n) {
   DETACH DELETE d
 }
 SET n.externo = true
-REMOVE n.divisao, n.orgao, n.tipo, n.numero, n.data, n.titulo, n.ementa, n.estado, n.revogada, n.cancelada, n.fonte_url,
+REMOVE n.divisao, n.estado_por, n.orgao, n.tipo, n.numero, n.data, n.titulo, n.ementa, n.estado, n.revogada, n.cancelada, n.fonte_url,
        n.caminho, n.upstream, n.upstream_sha, n.url_arquivo, n.versao_texto, n.publicacao, n.responsavel, n.baixado_em,
        n.arquivo, n.ocr, n.temas
 RETURN count(n) AS n

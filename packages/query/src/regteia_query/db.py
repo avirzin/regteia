@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from neo4j import READ_ACCESS, Driver, GraphDatabase, ManagedTransaction
+from neo4j.exceptions import ServiceUnavailable as BancoIndisponivel  # noqa: F401 (re-exported: adapters never import neo4j)
 from regteia_schema.env import neo4j_settings
 
 _QUERIES = Path(__file__).parent / "queries"

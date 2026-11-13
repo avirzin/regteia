@@ -15,14 +15,14 @@ _VAZIAS = {
 }  # fmt: skip
 
 
-def _plano(texto: str) -> str:
+def sem_acento(texto: str) -> str:
     """Lower case without accents, same length as `texto` (so positions map back)."""
     return texto.translate(_SEM_ACENTO).lower()
 
 
 def prefixos(consulta: str) -> list[str]:
     out = []
-    for p in _PALAVRA.findall(_plano(consulta)):
+    for p in _PALAVRA.findall(sem_acento(consulta)):
         if p in _VAZIAS or len(p) < 3:
             continue
         pref = p if len(p) <= 4 else p[: max(4, len(p) - 2)]
@@ -33,7 +33,7 @@ def prefixos(consulta: str) -> list[str]:
 
 def trecho(texto: str, consulta: str, janela: int = JANELA) -> str:
     """The `janela`-character window of `texto` holding the most distinct query terms, cut at word boundaries."""
-    plano = _plano(texto)
+    plano = sem_acento(texto)
     termos = prefixos(consulta)
     hits: list[tuple[int, int]] = []  # (position, term index)
     for k, t in enumerate(termos):

@@ -106,7 +106,7 @@ def aplicar(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
     stats |= _dispositivos(driver, plano, run)
 
     if plano.estados is not None:
-        rows = [{"id": e.id, "estado": e.estado.value, "caminho": e.caminho} for e in plano.estados]
+        rows = [{"id": e.id, "estado": e.estado.value, "caminho": e.caminho, "por": e.por} for e in plano.estados]
         n = _write(driver, "estados_set", rows)
         _expect("estados_set (norms in estado.jsonl missing from the graph)", n, len(rows))
         stats["normas_removidas"] = _write(driver, "normas_demote", upstream=up, vivos=sorted(plano.ids_vivos))

@@ -27,12 +27,25 @@ class NormaResumo(BaseModel):
     versao_texto: str | None = None
     ocr: bool | None = None
     cancelada: bool | None = None
+    estado_por: list[str] = Field(default_factory=list)  # titles of the norms upstream says revoked/amended this one
 
     @property
     def situacao(self) -> str:
         if self.externo:
             return "FORA DO ACERVO"
         return {"vigente": "VIGENTE", "alterada": "VIGENTE, ALTERADA", "revogada": "REVOGADA"}[self.estado]
+
+    @property
+    def situacao_detalhada(self) -> str:
+        """'REVOGADA por Resolução BCB N° 603', 'VIGENTE, ALTERADA por …', 'VIGENTE'."""
+        s = self.situacao
+        if self.estado == "revogada" and not self.estado_por:
+            return f"{s} (o portal não informa por qual norma)"
+        if self.estado in ("revogada", "alterada") and self.estado_por:
+            nomes = self.estado_por[:8]
+            mais = f" e mais {len(self.estado_por) - 8}" if len(self.estado_por) > 8 else ""
+            return f"{s} por {', '.join(nomes)}{mais}"
+        return s
 
     @property
     def rotulo(self) -> str:
@@ -86,6 +99,7 @@ class Trecho(BaseModel):
     dispositivo: DispositivoResumo
     trecho: str
     score: float
+    texto: str | None = None  # the whole Dispositivo (capped), only when asked for (buscar com_texto)
 
 
 class ItemBusca(BaseModel):

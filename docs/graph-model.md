@@ -16,6 +16,7 @@ One node per norm ID (upstream IDs, unique constraint `norma_id`). Two kinds, to
 | `id` | `grafo/estado.jsonl` | e.g. `bcb:resolucao-bcb:520`, `cvm:instrucao:68` |
 | `acervo` | `upstreams.toml` | `bcb` or `cvm` |
 | `estado` | `grafo/estado.jsonl` | `vigente` \| `alterada` \| `revogada`. **Authoritative** |
+| `estado_por` | `grafo/estado.jsonl` `por` | ids of the norms that revoked or amended it, per upstream; absent when none |
 | `caminho`, `upstream`, `upstream_sha` | ingest | which file, from which repo, at which commit |
 | `url_arquivo` | ingest | `<url>/blob/<upstream_sha>/<caminho>`: the exact file version (http(s) upstreams only) |
 | `fonte_url` | frontmatter `fonte` | official source; always shown first |

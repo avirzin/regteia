@@ -15,11 +15,14 @@ from .modelos import (
     Trecho,
 )
 from .resolver import candidatos, escapar_lucene, separar_dispositivo
+from .sinonimos import expandir
 from .trechos import trecho
 
 PESO_COMUNICADO = 0.2  # comunicados are mostly auction notices: down-ranked, never deleted
 TRECHOS_POR_NORMA = 3
 TEXTO_MAX = 60_000  # characters of a matched Dispositivo read back to cut its excerpt
+TEXTO_INTEGRAL_MAX = 4_000  # with com_texto: characters of each matched Dispositivo returned whole
+PESO_SINONIMO = 0.5
 NOTA_BUSCA = (
     "A busca cobre títulos, ementas e o texto dos dispositivos na redação mais recente publicada "
     "(sem as redações anteriores riscadas no portal)."
@@ -186,13 +189,31 @@ def buscar(
     limite: int = 20,
     incluir_revogadas: bool = True,
     incluir_comunicados: bool = False,
+    com_texto: bool = False,
 ) -> ResultadoBusca:
-    """Full-text search (Portuguese analyzer). Comunicados are down-ranked unless `incluir_comunicados`."""
-    q = escapar_lucene(texto)
+    """Full-text search (Portuguese analyzer) over titles, ementas and Dispositivo texts, plus the synonym table.
+
+    Comunicados are down-ranked unless `incluir_comunicados`. With `com_texto`, each matched Dispositivo also comes
+    whole (up to TEXTO_INTEGRAL_MAX characters), so a caller can answer without a second request."""
+    q, extras = _consulta(texto)
     if not q:
         return ResultadoBusca(consulta=texto, itens=[], notas=[NOTA_BUSCA])
     rows = _buscar(db, q, limite, incluir_revogadas, 1.0 if incluir_comunicados else PESO_COMUNICADO)
-    return ResultadoBusca(consulta=texto, itens=[_item(r, texto) for r in rows], notas=[NOTA_BUSCA])
+    itens = [_item(r, f"{texto} {extras}", com_texto) for r in rows]
+    return ResultadoBusca(consulta=texto, itens=itens, notas=_notas_busca(extras))
+
+
+def _consulta(texto: str) -> tuple[str, str]:
+    """Lucene query for `texto` (escaped: never query syntax from the user) plus the synonym expansion, if any."""
+    q = escapar_lucene(texto)
+    extras = expandir(texto)
+    if q and extras:
+        q = f"({q}) OR ({escapar_lucene(extras)})^{PESO_SINONIMO}"
+    return q, extras
+
+
+def _notas_busca(extras: str) -> list[str]:
+    return [NOTA_BUSCA] + ([f"Também buscado, com peso menor: {extras}."] if extras else [])
 
 
 def _buscar(db: Leitor, q: str, limite: int, incluir_revogadas: bool, peso_comunicado: float) -> list[dict]:
@@ -208,9 +229,14 @@ def _buscar(db: Leitor, q: str, limite: int, incluir_revogadas: bool, peso_comun
     )
 
 
-def _item(r: dict, consulta: str) -> ItemBusca:
+def _item(r: dict, consulta: str, com_texto: bool = False) -> ItemBusca:
     trechos = [
-        Trecho(dispositivo=DispositivoResumo.model_validate(t), trecho=trecho(t["texto"], consulta), score=t["score"])
+        Trecho(
+            dispositivo=DispositivoResumo.model_validate(t),
+            trecho=trecho(t["texto"], consulta),
+            score=t["score"],
+            texto=_cortar(t["texto"]) if com_texto else None,
+        )
         for t in r["trechos"]
     ]
     return ItemBusca(norma=NormaResumo.model_validate(r["n"]), score=r["score"], trechos=trechos)
@@ -218,13 +244,21 @@ def _item(r: dict, consulta: str) -> ItemBusca:
 
 def panorama(db: Leitor, tema: str, *, limite: int = 30) -> ResultadoBusca:
     """Norms not revoked on a topic, comunicados and out-of-corpus norms excluded."""
-    q = escapar_lucene(tema)
+    q, extras = _consulta(tema)
     if not q:
         return ResultadoBusca(consulta=tema, itens=[], notas=[NOTA_BUSCA])
     rows = _buscar(db, q, limite, False, 0.0)
-    itens = [_item(r, tema) for r in rows if r["score"] > 0 and not r["n"]["externo"]]
+    itens = [_item(r, f"{tema} {extras}") for r in rows if r["score"] > 0 and not r["n"]["externo"]]
     notas = [
-        NOTA_BUSCA,
+        *_notas_busca(extras),
         "Inclui normas vigentes e alteradas (estado atual). Revogadas e comunicados ficam de fora.",
     ]
     return ResultadoBusca(consulta=tema, itens=itens, notas=notas)
+
+
+def _cortar(texto: str, limite: int = TEXTO_INTEGRAL_MAX) -> str:
+    if len(texto) <= limite:
+        return texto
+    corte = texto.rfind("\n", 0, limite)
+    corte = corte if corte > limite // 2 else limite
+    return texto[:corte].rstrip() + "\n[… texto cortado: leia o dispositivo inteiro com `dispositivo`]"

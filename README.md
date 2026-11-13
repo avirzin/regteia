@@ -127,13 +127,17 @@ Add `--json` before the subcommand for machine-readable output.
 
 ## Using it from your AI assistant (local MCP)
 
-The MCP server runs only on your machine, launched by your client over stdio. The Docker stack must be running.
+The MCP server runs only on your machine, launched by your client over stdio (no port, no network listener). It is
+read-only: five fixed tools over the query layer, no "run Cypher" tool. The Docker stack must be running.
 
-**Claude Code**
+**Claude Code**, no uv needed (runs the server inside the `server` container, still over stdio):
 
 ```bash
-claude mcp add --scope user regteia -- uv run --directory /absolute/path/to/regteia regteia-mcp
+claude mcp add --scope user regteia -- docker compose -f /absolute/path/to/regteia/docker-compose.yml exec -T server regteia-mcp
 ```
+
+With uv on the host, instead: `claude mcp add --scope user regteia -- uv run --directory /absolute/path/to/regteia regteia-mcp`
+(reads Neo4j credentials from the repo's `.env`).
 
 **Claude Desktop, Cursor and other clients with a config file**
 
@@ -141,23 +145,27 @@ claude mcp add --scope user regteia -- uv run --directory /absolute/path/to/regt
 {
   "mcpServers": {
     "regteia": {
-      "command": "/absolute/path/to/uv",
-      "args": ["run", "--directory", "/absolute/path/to/regteia", "regteia-mcp"]
+      "command": "/usr/local/bin/docker",
+      "args": ["compose", "-f", "/absolute/path/to/regteia/docker-compose.yml", "exec", "-T", "server", "regteia-mcp"]
     }
   }
 }
 ```
 
-Use absolute paths (`which uv`): desktop apps don't inherit your shell's `PATH`. The server reads Neo4j credentials
-from the repo's `.env`.
+Use absolute paths (`which docker`): desktop apps don't inherit your shell's `PATH`.
 
 | Tool | What it does |
 |---|---|
-| `buscar` | Full-text search over articles; returns norm, article, validity status and official source |
-| `norma` | One norm: summary, status, what amended or revoked it, what it amends, cites and rests on; or one article's text |
+| `buscar` | Search over article text, titles and summaries; per norm: status (and who revoked or amended it), official source, and the matching articles' text. Common terms ("exchange", "cripto", "PLD", "open finance") are mapped to the regulation's wording |
+| `norma` | One norm: summary, status, what amended or revoked it, what it amends, cites and rests on, and its list of articles |
+| `dispositivo` | One article (or annex, item): latest wording, chapter and section, revoked or not, struck-through earlier wording, future-date warnings |
 | `relacoes` | Multi-hop traversal from a norm, filtered by relation type and depth |
-| `vigencia_em` | Whether a norm or article was in force on a given date, and why |
-| `panorama` | The norms in force on a topic |
+| `panorama` | The norms in force on a topic (no revoked norms, no comunicados) |
+
+`vigencia_em` ("was this article in force on date X?") comes with roadmap step 7.
+
+Try: "Quais são as modalidades de prestadora de serviços de ativos virtuais?", "O que mudou no art. 91 da
+Resolução BCB 520?", "Quais normas alteraram a Resolução CMN 4.966 e o que elas mudaram?".
 
 ## Updates
 
@@ -181,7 +189,7 @@ only runs the tests.
 - [x] Query layer, `regteia` CLI, statistics
 - [x] Web: statistics dashboard and overview graph
 - [x] Article split + Portuguese full-text search
-- [ ] Local MCP server
+- [x] Local MCP server
 - [ ] Article-level amendments, `vigencia_em`, norm pages
 - [ ] Body-text citations; fewer unresolved references
 - [ ] Federal laws from ctresb/leis
