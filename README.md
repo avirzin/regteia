@@ -102,8 +102,16 @@ docker compose logs -f updater            # first run clones upstream and loads 
 
 To force a full reload later: `docker compose exec updater regteia-ingest full`.
 
-Then open `http://127.0.0.1:8080` (the JSON API is documented at `http://127.0.0.1:8080/api/docs`). The Neo4j Browser is at `http://127.0.0.1:7474` if you want to write Cypher,
-for example everything that amended Resolução BCB 520:
+Then open the web app. Everything answers only on your machine (`127.0.0.1`), while the stack is running:
+
+| What | Address |
+|---|---|
+| Web app (overview graph, statistics) | http://127.0.0.1:8080 |
+| JSON API docs | http://127.0.0.1:8080/api/docs |
+| Neo4j Browser | http://127.0.0.1:7474 |
+| Neo4j connection (Browser, drivers) | `bolt://127.0.0.1:7687`, user `neo4j`, password `NEO4J_PASSWORD` from `.env` |
+
+In the Neo4j Browser you can write Cypher, for example everything that amended Resolução BCB 520:
 
 ```cypher
 MATCH (n:Norma {id: "bcb:resolucao-bcb:520"})<-[r:ALTERA|REVOGA_PARCIAL]-(m:Norma)
