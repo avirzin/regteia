@@ -92,7 +92,12 @@ def test_estatisticas(db):
     assert sum(e.por_estado.values()) == 20
     assert sum(s.total for s in e.por_serie) == 20
     assert {i.fonte for i in e.ingestoes} == {"normas-bcb", "normas-cvm"}
-    assert e.falhas_atualizacoes is None
+    # atualizacoes: every fixture entry is stored and accounted for; Res. BCB 589 -> arts. 88 (2027) and 91 of 520
+    assert e.atualizacoes == sum(e.atualizacoes_por_resultado.values()) == 8
+    assert e.falhas_atualizacoes == e.atualizacoes_por_resultado.get("falha", 0)
+    assert e.alteracoes_dispositivo == sum(e.alteracoes_por_tipo.values()) >= 2
+    assert e.alteracoes_futuras >= 1  # art. 88 of Res. BCB 520, from 1/1/2027
+    assert e.atualizacoes_por_resultado["norma"] >= 2  # the two total revocations
 
 
 def test_exportar_grafo(db):

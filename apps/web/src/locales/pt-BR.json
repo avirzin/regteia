@@ -167,6 +167,35 @@
       "alvo": "alvo",
       "padrao": "padrão"
     },
+    "atualizacoes": {
+      "titulo": "Alterações por artigo",
+      "sub": "Lidas das “atualizações” de cada norma no acervo: quem alterou qual artigo, como (nova redação, inclusão, revogação) e a partir de quando. Nenhuma entrada é descartada: o que não foi lido aparece no relatório abaixo.",
+      "kpiEntradas": "entradas",
+      "kpiAlteracoes": "alterações ligadas a artigos",
+      "kpiFuturas": "com vigência futura",
+      "kpiFalhas": "entradas não lidas",
+      "porResultado": "Como cada entrada foi lida",
+      "porTipo": "Alterações por tipo",
+      "cabecalhoResultado": "Resultado",
+      "cabecalhoTipo": "Tipo",
+      "relatorio": "Relatório: {n} entradas não lidas ou lidas em parte",
+      "norma": "Norma",
+      "entrada": "Entrada no acervo",
+      "motivo": "Resultado",
+      "resultado": {
+        "dispositivos": "Lida até o artigo",
+        "parcial": "Lida em parte",
+        "ausente": "Artigo fora do texto dividido",
+        "norma": "Norma inteira (revogação total, sem detalhe)",
+        "nota": "Observação ou outra norma",
+        "falha": "Não lida"
+      },
+      "tipo": {
+        "nova_redacao": "Nova redação",
+        "inclusao": "Inclusão",
+        "revogacao": "Revogação"
+      }
+    },
     "ingestao": {
       "titulo": "Última ingestão",
       "sub": "Versão exata dos acervos carregada no banco. Atualizada a cada hora.",
@@ -174,9 +203,7 @@
       "commit": "Commit",
       "quando": "Quando",
       "modo": "Modo",
-      "arquivos": "Arquivos",
-      "semParser": "Falhas do parser de atualizações: o parser ainda não existe (roadmap, passo 7).",
-      "falhas": "Falhas do parser de atualizações: {n}"
+      "arquivos": "Arquivos"
     },
     "dispositivos": {
       "titulo": "Divisão em dispositivos",

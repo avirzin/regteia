@@ -150,6 +150,51 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
     })
   })
 
+  const [cAtu, atu] = cartao(t('est.atualizacoes.titulo'), t('est.atualizacoes.sub'), true)
+  raiz.append(cAtu)
+  const kpisAtu = el('div', { class: 'kpis' })
+  kpisAtu.append(
+    kpi(t('est.atualizacoes.kpiEntradas'), e.atualizacoes),
+    kpi(t('est.atualizacoes.kpiAlteracoes'), e.alteracoes_dispositivo),
+    kpi(t('est.atualizacoes.kpiFuturas'), e.alteracoes_futuras),
+    kpi(t('est.atualizacoes.kpiFalhas'), e.falhas_atualizacoes),
+  )
+  const gradeAtu = el('div', { class: 'dupla' })
+  const [atuA, atuB] = [el('div'), el('div')]
+  gradeAtu.append(atuA, atuB)
+  const relatorio = el('details', { class: 'tabela' })
+  relatorio.append(
+    el('summary', {}, t('est.atualizacoes.relatorio', { n: fmt.format(e.atualizacoes_falhas.length) })),
+    tabelaSimples(
+      [t('est.atualizacoes.norma'), t('est.atualizacoes.entrada'), t('est.atualizacoes.motivo')],
+      e.atualizacoes_falhas.map((f) => {
+        const norma = el('code', {}, f.titulo ?? f.norma)
+        norma.title = f.norma
+        return [norma, f.texto, tDinamico(`est.atualizacoes.resultado.${f.resultado}`, f.resultado) + (f.motivo ? ` · ${f.motivo}` : '')]
+      }),
+    ),
+  )
+  atu.append(kpisAtu, gradeAtu, relatorio)
+  const linhasRes = Object.entries(e.atualizacoes_por_resultado).map(([k, v]) => ({
+    rotulo: tDinamico(`est.atualizacoes.resultado.${k}`, k),
+    valor: v,
+  }))
+  const linhasAlt = Object.entries(e.alteracoes_por_tipo).map(([k, v]) => ({
+    rotulo: tDinamico(`est.atualizacoes.tipo.${k}`, k),
+    valor: v,
+  }))
+  graficos.push(() => {
+    atuA.replaceChildren(el('h3', {}, t('est.atualizacoes.porResultado')), el('div'))
+    atuB.replaceChildren(el('h3', {}, t('est.atualizacoes.porTipo')), el('div'))
+    barras(atuA.lastElementChild as HTMLElement, linhasRes, {
+      rotuloLargura: 220,
+      cabecalho: [t('est.atualizacoes.cabecalhoResultado'), t('est.atualizacoes.kpiEntradas')],
+    })
+    barras(atuB.lastElementChild as HTMLElement, linhasAlt, {
+      cabecalho: [t('est.atualizacoes.cabecalhoTipo'), t('est.atualizacoes.kpiAlteracoes')],
+    })
+  })
+
   const [cIng, ing] = cartao(t('est.ingestao.titulo'), t('est.ingestao.sub'), true)
   raiz.append(cIng)
   ing.append(
@@ -161,13 +206,6 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
         const quando = i.em ? fmtDataHora(i.em) : '-'
         return [i.fonte, code, quando, i.modo ?? '-', i.arquivos ?? 0]
       }),
-    ),
-    el(
-      'p',
-      { class: 'sub' },
-      e.falhas_atualizacoes === null
-        ? t('est.ingestao.semParser')
-        : t('est.ingestao.falhas', { n: fmt.format(e.falhas_atualizacoes) }),
     ),
   )
 

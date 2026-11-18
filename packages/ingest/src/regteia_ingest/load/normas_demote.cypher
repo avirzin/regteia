@@ -1,10 +1,14 @@
 // Norms of this upstream whose file is gone: keep the node (other norms may point to it) but turn it into a stub,
-// without text: its Dispositivos go.
+// without text: its Dispositivos and `atualizacoes` entries go.
 MATCH (n:Norma {upstream: $upstream})
 WHERE n.externo = false AND NOT n.id IN $vivos
 CALL (n) {
   MATCH (n)-[:TEM_DISPOSITIVO]->(d:Dispositivo)
   DETACH DELETE d
+}
+CALL (n) {
+  MATCH (n)-[:TEM_ATUALIZACAO]->(a:Atualizacao)
+  DETACH DELETE a
 }
 SET n.externo = true
 REMOVE n.divisao, n.estado_por, n.orgao, n.tipo, n.numero, n.data, n.titulo, n.ementa, n.estado, n.revogada, n.cancelada, n.fonte_url,

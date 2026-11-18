@@ -9,7 +9,7 @@ from typing import Any
 from neo4j import Driver, ManagedTransaction
 from regteia_schema import NaoResolvidoAlvo, prefixo
 
-from ..parse import dispositivos
+from ..parse import atualizacoes, dispositivos
 from ..sources.normas_grafo import Plano
 
 log = logging.getLogger(__name__)
@@ -54,41 +54,89 @@ def _expect(name: str, got: int, want: int) -> None:
         raise LoadError(f"{name}: expected {want} rows to be written, got {got}")
 
 
-def ultima(driver: Driver, fonte: str) -> tuple[str | None, int | None]:
-    """(last loaded SHA, splitter version used) for an upstream; (None, None) if it was never loaded."""
+def ultima(driver: Driver, fonte: str) -> tuple[str | None, int | None, int | None]:
+    """(last loaded SHA, splitter version, atualizacoes parser version) for an upstream; Nones if never loaded."""
     recs = driver.execute_query(cypher("ingestao_get"), {"fonte": fonte}, routing_="r").records
-    return (recs[0]["sha"], recs[0]["divisao"]) if recs else (None, None)
+    return (recs[0]["sha"], recs[0]["divisao"], recs[0]["atualizacoes"]) if recs else (None, None, None)
+
+
+def _entradas(norma: str, leituras: list[atualizacoes.Leitura]) -> tuple[list[dict], list[dict]]:
+    """Rows for atualizacoes_create (one per entry) and atualizacoes_alteram (one per matched target)."""
+    entradas, alteram = [], []
+    for k, x in enumerate(leituras):
+        entradas.append(
+            {
+                "norma": norma,
+                "ordem": k,
+                "texto": x.texto,
+                "de": x.de,
+                "resultado": x.resultado,
+                "motivo": x.motivo,
+                # Neo4j lists can't hold nulls: no date is ""
+                "ausentes": list(x.ausentes) or None,
+                "ausentes_tipo": [t for _, t, _ in x.ausentes_detalhe] or None,
+                "ausentes_desde": [d.isoformat() if d else "" for _, _, d in x.ausentes_detalhe] or None,
+            }
+        )
+        for a in x.alvos:
+            alteram.append(
+                {
+                    "de": x.de,
+                    "acervo": prefixo(x.de) if x.de else None,
+                    "dispositivo": f"{norma}#{a.chave}",
+                    "tipo": a.tipo,
+                    "a_partir_de": a.a_partir_de.isoformat() if a.a_partir_de else None,
+                    "detalhe": a.detalhe,
+                    "entrada": k,
+                }
+            )
+    return entradas, alteram
 
 
 def _dispositivos(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
-    """Split every planned norm and write its Dispositivos, in transactions bounded by text size."""
-    stats = {"dispositivos": 0, "dispositivos_removidos": 0}
+    """Split every planned norm, write its Dispositivos and then its `atualizacoes` (entries and article-level
+    ALTERA edges), in transactions bounded by text size. A norm's entries are replaced whole each time it is read."""
+    stats = {"dispositivos": 0, "dispositivos_removidos": 0, "atualizacoes": 0, "alteracoes_dispositivo": 0}
     lote: list[dict] = []
+    entradas: list[dict] = []
+    alteram: list[dict] = []
     tamanho = 0
 
     def gravar() -> None:
-        nonlocal lote, tamanho
+        nonlocal lote, entradas, alteram, tamanho
         if not lote:
             return
         esperado = sum(len(r["itens"]) for r in lote)
+        normas = [r["norma"] for r in lote]
         with driver.session() as s:
             n = s.execute_write(_count, cypher("dispositivos_upsert"), rows=lote, run=run)
             _expect("dispositivos_upsert", n, esperado)
             stats["dispositivos"] += n
-            normas = [r["norma"] for r in lote]
             stats["dispositivos_removidos"] += s.execute_write(
                 _count, cypher("dispositivos_prune"), normas=normas, run=run
             )
-        lote, tamanho = [], 0
+            s.execute_write(_count, cypher("atualizacoes_clear"), normas=normas)
+            for parte in _batches(entradas):
+                n = s.execute_write(_count, cypher("atualizacoes_create"), rows=list(parte), run=run)
+                _expect("atualizacoes_create", n, len(parte))
+                stats["atualizacoes"] += n
+            for parte in _batches(alteram):
+                n = s.execute_write(_count, cypher("atualizacoes_alteram"), rows=list(parte))
+                _expect("atualizacoes_alteram (a target Dispositivo is missing)", n, len(parte))
+                stats["alteracoes_dispositivo"] += n
+        lote, entradas, alteram, tamanho = [], [], [], 0
 
-    for norma_id, d in plano.divisoes():
+    for t in plano.textos():
         itens = []
-        for x in d.dispositivos:
+        for x in t.divisao.dispositivos:
             row = x.model_dump(exclude={"norma"})
             row["redacoes_anteriores"] = list(x.redacoes_anteriores) or None
             itens.append(row)
             tamanho += len(x.texto) + sum(map(len, x.redacoes_anteriores))
-        lote.append({"norma": norma_id, "divisao": d.metodo, "itens": itens})
+        lote.append({"norma": t.norma, "divisao": t.divisao.metodo, "itens": itens})
+        e, a = _entradas(t.norma, t.atualizacoes)
+        entradas += e
+        alteram += a
         if tamanho >= TEXTO_POR_LOTE or len(lote) >= 1_000:
             gravar()
     gravar()
@@ -145,5 +193,6 @@ def registrar(driver: Driver, plano: Plano) -> None:
         "arquivos": plano.arquivos,
         "modo": "full" if plano.full else "incremental",
         "divisao": dispositivos.VERSAO,
+        "atualizacoes": atualizacoes.VERSAO,
     }
     driver.execute_query(cypher("ingestao_set"), params, routing_="w")

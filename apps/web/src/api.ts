@@ -65,7 +65,14 @@ export interface Estatisticas {
   normas_por_divisao: Record<string, number>
   dispositivos_revogados: number
   dispositivos_com_redacao_anterior: number
-  falhas_atualizacoes: number | null
+  atualizacoes: number
+  atualizacoes_por_resultado: Record<string, number>
+  falhas_atualizacoes: number
+  alteracoes_dispositivo: number
+  alteracoes_por_tipo: Record<string, number>
+  alteracoes_com_data: number
+  alteracoes_futuras: number
+  atualizacoes_falhas: { norma: string; titulo: string | null; texto: string; resultado: string; motivo: string | null }[]
   ingestoes: { fonte: string; sha: string | null; em: string | null; arquivos: number | null; modo: string | null }[]
   aviso: string
 }

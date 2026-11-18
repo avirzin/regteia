@@ -126,8 +126,12 @@ def fmt_estatisticas(r: Estatisticas) -> str:
         + ", ".join(f"{k} {v:,}" for k, v in r.dispositivos_por_tipo.items())
         + f"; revogados {r.dispositivos_revogados:,}, com redação anterior {r.dispositivos_com_redacao_anterior:,}",
         "  Normas por divisão: " + ", ".join(f"{k} {v:,}" for k, v in r.normas_por_divisao.items()),
-        "Falhas do parser de atualizações: "
-        + ("ainda não implementado" if r.falhas_atualizacoes is None else f"{r.falhas_atualizacoes:,}"),
+        f"Atualizações (entradas): {r.atualizacoes:,}  "
+        + ", ".join(f"{k} {v:,}" for k, v in r.atualizacoes_por_resultado.items()),
+        f"  Alterações por dispositivo: {r.alteracoes_dispositivo:,}  "
+        + ", ".join(f"{k} {v:,}" for k, v in r.alteracoes_por_tipo.items())
+        + f"; com data {r.alteracoes_com_data:,}, vigência futura {r.alteracoes_futuras:,}",
+        f"  Falhas do parser de atualizações: {r.falhas_atualizacoes:,}",
         "\nPor órgão:",
     ]
     for orgao, c in r.por_orgao.items():

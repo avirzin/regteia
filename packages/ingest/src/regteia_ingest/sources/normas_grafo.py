@@ -22,6 +22,7 @@ from regteia_schema import (
 )
 
 from ..config import Upstream
+from ..parse import atualizacoes
 from ..parse.dispositivos import Divisao, dividir
 from ..parse.frontmatter import FrontmatterError, read_frontmatter, read_norma
 from .git import Change
@@ -37,6 +38,15 @@ class UpstreamValidationError(RuntimeError):
         shown = "\n  ".join(errors[:30])
         more = f"\n  ... and {len(errors) - 30} more" if len(errors) > 30 else ""
         super().__init__(f"{upstream}: {len(errors)} invalid upstream record(s):\n  {shown}{more}")
+
+
+@dataclass(frozen=True)
+class Texto:
+    """One norm's split and its `atualizacoes` read against it."""
+
+    norma: str
+    divisao: Divisao
+    atualizacoes: list[atualizacoes.Leitura]
 
 
 @dataclass
@@ -55,13 +65,18 @@ class Plano:
     ids_vivos: set[str] = field(default_factory=set)  # norm ids backed by a file at `sha`
     root: Path | None = None  # the checkout, for reading bodies when writing
 
-    def divisoes(self) -> Iterator[tuple[str, Divisao]]:
-        """Each planned norm split into Dispositivos, read lazily so a full load never holds every text at once.
-        Splitting cannot fail (no input is invalid, only less structured); the files were validated by planejar."""
+    def textos(self) -> Iterator[Texto]:
+        """Each planned norm split into Dispositivos, with its `atualizacoes` read against that split. Lazy, so a full
+        load never holds every text at once. Neither step can fail (no input is invalid, only less structured: an
+        entry we can't read is reported as such); the files were validated by planejar."""
         assert self.root is not None
         for n in self.normas:
-            _, corpo = read_norma(self.root / n.caminho)
-            yield n.id, dividir(n.id, corpo)
+            fm, corpo = read_norma(self.root / n.caminho)
+            d = dividir(n.id, corpo)
+            chaves = {x.id.split("#", 1)[1] for x in d.dispositivos}
+            entradas = fm.get("atualizacoes") or []
+            leituras = [atualizacoes.ligar(atualizacoes.ler(str(e), n.id, n.acervo), chaves) for e in entradas]
+            yield Texto(n.id, d, leituras)
 
 
 def is_norm_path(path: str) -> bool:

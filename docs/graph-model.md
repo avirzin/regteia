@@ -1,7 +1,7 @@
 # Graph model
 
-Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 5 (norms and their Dispositivos).
-Article-level `ALTERA` arrives in step 7.
+Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 7 in progress (norms, Dispositivos,
+and article-level amendments read from `atualizacoes`; `vigencia_em` and the norm page come next).
 
 ## Nodes
 
@@ -63,11 +63,25 @@ reference appears), `campo` (frontmatter field), and `tipo`:
 - `alvo`: the reference was parsed into `id` but no such norm exists (`arestas` = edges pointing at it).
 - `padrao`: the pattern could not be parsed at all (`padrao`, `exemplo`, `trechos` = occurrences).
 
-### `(:Ingestao {fonte, sha, em, arquivos, modo, divisao})`
+### `(:Atualizacao)`
+
+One per entry of a norm's `atualizacoes` frontmatter list, in upstream's order (ADR 0002). Replaced whole whenever the
+norm is read again. `id` `<norma>#atualizacao-<ordem>`.
+
+| Property | Notes |
+|---|---|
+| `norma`, `ordem` | the amended norm and the entry's position in its list |
+| `texto` | the entry as upstream wrote it |
+| `de` | the amending norm (upstream ID, read with upstream's own rules); null for notes and unreadable entries |
+| `resultado` | `dispositivos` (every target matched), `parcial`, `ausente` (read, but no target is among the norm's Dispositivos), `norma` (whole-norm event: total revocation, no detail, a consolidated manual), `nota` (an observation, or about another norm), `falha` |
+| `motivo` | why, for everything but `dispositivos`; for `falha`/`parcial`, the clause that could not be read |
+| `ausentes`, `ausentes_tipo`, `ausentes_desde` | parallel lists: targets that matched no Dispositivo (`art-90-a`), their type, and start date (`""` if none) |
+
+### `(:Ingestao {fonte, sha, em, arquivos, modo, divisao, atualizacoes})`
 
 One per upstream. `sha` is the last *successfully* loaded commit; the next incremental run diffs from it. `divisao`
-is the splitter version (`dispositivos.VERSAO`) that built the Dispositivos; a different version forces a full
-reload.
+is the splitter version (`dispositivos.VERSAO`) that built the Dispositivos, `atualizacoes` the parser version
+(`atualizacoes.VERSAO`); a different version of either forces a full reload.
 
 ### `(:Migracao {nome, em})`
 
@@ -75,7 +89,17 @@ Applied files from `db/migrations`.
 
 ## Relationships
 
-`(:Norma)-[:TEM_DISPOSITIVO]->(:Dispositivo)`: no properties.
+`(:Norma)-[:TEM_DISPOSITIVO]->(:Dispositivo)` and `(:Norma)-[:TEM_ATUALIZACAO]->(:Atualizacao)`: no properties.
+
+`(:Norma)-[:ALTERA {fonte: "atualizacoes"}]->(:Dispositivo)`: the article-level amendments, from the amended
+norm's `atualizacoes` (ADR 0002). The amending norm gets a stub if it is outside the corpora.
+
+| Property | Notes |
+|---|---|
+| `tipo` | `nova_redacao`, `inclusao` or `revogacao` |
+| `a_partir_de` | `Date` or null. Can be in the future. Null: the entry gives no date (in force from the amending norm's own date) |
+| `detalhe` | what inside the article, as written: `inciso III, alíneas "b", "c"`, `caput; §§ 2º a 4º` |
+| `entrada` | `ordem` of the `Atualizacao` it came from |
 
 `(:Norma)-[:REVOGA|REVOGA_PARCIAL|ALTERA|CITA|REGULAMENTA|CONJUNTA]->(:Norma)` from `grafo/arestas.jsonl`. The type
 is upstream's `relacao` in upper case.
@@ -89,8 +113,9 @@ is upstream's `relacao` in upper case.
 
 ## Indexes (db/migrations)
 
-- Unique: `Norma.id`, `Dispositivo.id`, `Ingestao.fonte`, `Migracao.nome`.
-- Range: `Norma.upstream`, `Norma.externo`, `Norma.estado`, `Norma.tipo`, `NaoResolvido.upstream`.
+- Unique: `Norma.id`, `Dispositivo.id`, `Atualizacao.id`, `Ingestao.fonte`, `Migracao.nome`.
+- Range: `Norma.upstream`, `Norma.externo`, `Norma.estado`, `Norma.tipo`, `NaoResolvido.upstream`,
+  `Atualizacao.resultado`, `Atualizacao.de`.
 - Full-text `busca_pt` over `Norma|Dispositivo` × `titulo, ementa, texto`, `brazilian` analyzer. `buscar` groups
   Dispositivo hits by norm.
 
@@ -103,3 +128,7 @@ REGULAMENTA 18,899, REVOGA 15,611, ALTERA 6,430, REVOGA_PARCIAL 2,113, CONJUNTA 
 Dispositivos (2026-11-12, normas-bcb@9e353a7b, normas-cvm@4a394582): 175,576 (artigo 67,193, texto 42,923, item
 42,647, preambulo 20,619, anexo 2,194); 256 revoked, 2,278 with earlier wording. Norms by `divisao`: texto 42,904,
 itens 11,133, artigos 9,512, vazio 36.
+
+`atualizacoes` (2026-11-18, normas-bcb@39a59edc; the CVM corpus has none): 18,860 entries (norma 13,642,
+dispositivos 3,935, ausente 819, parcial 293, nota 57, falha 114) and 10,301 article-level `ALTERA` edges (nova_redacao
+5,461, revogacao 2,879, inclusao 1,961), 3,625 with a start date, 69 starting after the load date.

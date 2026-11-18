@@ -8,6 +8,7 @@ from .modelos import (
     DecadaContagem,
     DispositivoContagem,
     Estatisticas,
+    FalhaAtualizacao,
     Ingestao,
     NaoResolvidoContagem,
     SerieContagem,
@@ -23,11 +24,14 @@ _CONSULTAS = [
     "est_ingestoes",
     "est_dispositivos",
     "est_dispositivos_tipo",
+    "est_atualizacoes",
+    "est_alteracoes",
+    "est_atualizacoes_falhas",
 ]
 
 
 def estatisticas(db: Leitor) -> Estatisticas:
-    totais, series, decadas, arestas, stubs, nao_res, ingestoes, disp, disp_tipo = db.ler_varios(
+    (totais, series, decadas, arestas, stubs, nao_res, ingestoes, disp, disp_tipo, atu, alt, falhas) = db.ler_varios(
         [(c, {}) for c in _CONSULTAS]
     )
     t = totais[0]
@@ -76,6 +80,13 @@ def estatisticas(db: Leitor) -> Estatisticas:
         dispositivos_revogados=sum(d.revogados for d in detalhe),
         dispositivos_com_redacao_anterior=sum(d.com_redacao_anterior for d in detalhe),
         dispositivos_detalhe=detalhe,
-        falhas_atualizacoes=None,
+        atualizacoes=sum(r["n"] for r in atu),
+        atualizacoes_por_resultado={r["resultado"]: r["n"] for r in atu},
+        falhas_atualizacoes=sum(r["n"] for r in atu if r["resultado"] == "falha"),
+        alteracoes_dispositivo=sum(r["n"] for r in alt),
+        alteracoes_por_tipo={r["tipo"]: r["n"] for r in alt},
+        alteracoes_com_data=sum(r["com_data"] for r in alt),
+        alteracoes_futuras=sum(r["futuras"] for r in alt),
+        atualizacoes_falhas=[FalhaAtualizacao.model_validate(r) for r in falhas],
         ingestoes=[Ingestao.model_validate(r) for r in ingestoes],
     )

@@ -167,6 +167,35 @@
       "alvo": "target",
       "padrao": "pattern"
     },
+    "atualizacoes": {
+      "titulo": "Amendments by article",
+      "sub": "Read from each norm’s “atualizações” in the corpus: which norm changed which article, how (new wording, inclusion, revocation) and from when. No entry is dropped: what could not be read is in the report below.",
+      "kpiEntradas": "entries",
+      "kpiAlteracoes": "amendments linked to articles",
+      "kpiFuturas": "taking effect later",
+      "kpiFalhas": "entries not read",
+      "porResultado": "How each entry was read",
+      "porTipo": "Amendments by type",
+      "cabecalhoResultado": "Result",
+      "cabecalhoTipo": "Type",
+      "relatorio": "Report: {n} entries not read or read in part",
+      "norma": "Norm",
+      "entrada": "Corpus entry",
+      "motivo": "Result",
+      "resultado": {
+        "dispositivos": "Read down to the article",
+        "parcial": "Read in part",
+        "ausente": "Article not in the split text",
+        "norma": "Whole norm (total revocation, no detail)",
+        "nota": "Note or another norm",
+        "falha": "Not read"
+      },
+      "tipo": {
+        "nova_redacao": "New wording",
+        "inclusao": "Inclusion",
+        "revogacao": "Revocation"
+      }
+    },
     "ingestao": {
       "titulo": "Last ingest",
       "sub": "Exact corpus version loaded in the database. Updated hourly.",
@@ -174,9 +203,7 @@
       "commit": "Commit",
       "quando": "When",
       "modo": "Mode",
-      "arquivos": "Files",
-      "semParser": "Amendment (atualizacoes) parser failures: the parser doesn't exist yet (roadmap, step 7).",
-      "falhas": "Amendment (atualizacoes) parser failures: {n}"
+      "arquivos": "Files"
     },
     "dispositivos": {
       "titulo": "Split into provisions",

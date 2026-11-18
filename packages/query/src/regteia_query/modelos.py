@@ -197,6 +197,16 @@ class DispositivoContagem(BaseModel):
     com_redacao_anterior: int
 
 
+class FalhaAtualizacao(BaseModel):
+    """One `atualizacoes` entry the parser could not read (or read only in part): the stats page's report."""
+
+    norma: str
+    titulo: str | None = None
+    texto: str
+    resultado: str  # falha | parcial | ausente
+    motivo: str | None = None
+
+
 class Estatisticas(BaseModel):
     normas: int  # file-backed
     stubs: int  # edge endpoints outside our corpora
@@ -219,6 +229,14 @@ class Estatisticas(BaseModel):
     dispositivos_revogados: int
     dispositivos_com_redacao_anterior: int
     dispositivos_detalhe: list[DispositivoContagem]
-    falhas_atualizacoes: int | None  # None until the `atualizacoes` parser exists (roadmap step 7)
+    atualizacoes: int  # upstream `atualizacoes` entries
+    # dispositivos | parcial | ausente (targets not in our split) | norma (whole norm, no detail) | nota | falha
+    atualizacoes_por_resultado: dict[str, int]
+    falhas_atualizacoes: int
+    alteracoes_dispositivo: int  # article-level ALTERA edges
+    alteracoes_por_tipo: dict[str, int]  # nova_redacao | inclusao | revogacao
+    alteracoes_com_data: int  # with an explicit "a partir de"
+    alteracoes_futuras: int  # starting after today
+    atualizacoes_falhas: list[FalhaAtualizacao]  # the report (capped)
     ingestoes: list[Ingestao]
     aviso: str = AVISO

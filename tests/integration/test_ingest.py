@@ -8,7 +8,7 @@ import pytest
 from neo4j import GraphDatabase
 from regteia_ingest.config import Settings, Upstream
 from regteia_ingest.migrate import migrate
-from regteia_ingest.parse import dispositivos
+from regteia_ingest.parse import atualizacoes, dispositivos
 from regteia_ingest.run import ingest
 
 from tests.conftest import commit_all
@@ -44,6 +44,8 @@ def snapshot(driver):
         "nao_resolvidos": q(driver, "MATCH (x:NaoResolvido) RETURN count(x) AS c")[0]["c"],
         "dispositivos": q(driver, "MATCH (:Norma)-[:TEM_DISPOSITIVO]->(d:Dispositivo) RETURN count(d) AS c")[0]["c"],
         "soltos": q(driver, "MATCH (d:Dispositivo) WHERE NOT ()-[:TEM_DISPOSITIVO]->(d) RETURN count(d) AS c")[0]["c"],
+        "atualizacoes": q(driver, "MATCH (:Norma)-[:TEM_ATUALIZACAO]->(a) RETURN count(a) AS c")[0]["c"],
+        "alteram": q(driver, "MATCH (:Norma)-[r:ALTERA]->(:Dispositivo) RETURN count(r) AS c")[0]["c"],
     }
 
 
@@ -87,6 +89,38 @@ def test_full_load_and_idempotency(env):
     assert sem == [{"d": "vazio"}]  # Carta Circular 3365: the portal has no text
     [ing] = q(driver, "MATCH (i:Ingestao {fonte: 'normas-bcb'}) RETURN i.divisao AS v")
     assert ing["v"] == dispositivos.VERSAO
+
+    # atualizacoes: Res. BCB 589 amends arts. 91 (from 1/10/2026) and 88 (from 1/1/2027) of Res. BCB 520, and includes
+    # arts. 90-A and 90-B from 1/1/2027, which the portal's consolidated text doesn't have yet
+    alteram = q(
+        driver,
+        "MATCH (:Norma {id: 'bcb:resolucao-bcb:589'})-[r:ALTERA]->(d:Dispositivo) "
+        "RETURN d.id AS d, r.tipo AS tipo, r.a_partir_de AS desde, r.detalhe AS detalhe, r.entrada AS entrada "
+        "ORDER BY d",
+    )
+    assert [{**a, "desde": a["desde"].to_native()} for a in alteram] == [
+        {"d": "bcb:resolucao-bcb:520#art-88", "tipo": "nova_redacao", "desde": date(2027, 1, 1),
+         "detalhe": 'inciso III, alíneas "b", "c", "d" e "e"', "entrada": 1},
+        {"d": "bcb:resolucao-bcb:520#art-91", "tipo": "nova_redacao", "desde": date(2026, 10, 1), "detalhe": "caput",
+         "entrada": 0},
+    ]  # fmt: skip
+    entradas = q(
+        driver,
+        "MATCH (:Norma {id: 'bcb:resolucao-bcb:520'})-[:TEM_ATUALIZACAO]->(a) "
+        "RETURN a.ordem AS k, a.de AS de, a.resultado AS r, a.ausentes AS aus, a.ausentes_tipo AS t, "
+        "a.ausentes_desde AS ad ORDER BY k",
+    )
+    assert entradas == [
+        {"k": 0, "de": "bcb:resolucao-bcb:589", "r": "dispositivos", "aus": None, "t": None, "ad": None},
+        {"k": 1, "de": "bcb:resolucao-bcb:589", "r": "parcial", "aus": ["art-90-a", "art-90-b"],
+         "t": ["inclusao", "inclusao"], "ad": ["2027-01-01", "2027-01-01"]},
+    ]  # fmt: skip
+    [rev] = q(
+        driver, "MATCH (:Norma {id: 'bcb:circular:1'})-[:TEM_ATUALIZACAO]->(a) RETURN a.resultado AS r, a.motivo AS m"
+    )
+    assert rev == {"r": "norma", "m": "revogação total"}
+    [ing] = q(driver, "MATCH (i:Ingestao {fonte: 'normas-bcb'}) RETURN i.atualizacoes AS v")
+    assert ing["v"] == atualizacoes.VERSAO
 
     # the same data again: nothing duplicated, and incremental at the same SHA is a no-op
     assert ingest(driver, settings, ups, full=True)
@@ -136,6 +170,9 @@ def test_incremental_applies_upstream_changes(env):
     [a91] = q(driver, "MATCH (d:Dispositivo {id: 'bcb:resolucao-bcb:520#art-91'}) RETURN d.texto AS t")
     assert "Esta Resolução entra em vigor" in a91["t"]
     assert q(driver, "MATCH (n:Norma {id: 'bcb:resolucao-bcb:520'}) RETURN n.estado AS e") == [{"e": "revogada"}]
+    # Res. BCB 520 was re-read: its entries and article-level edges are replaced, not duplicated (the deleted
+    # Carta Circular 3365 and IN 712 have no atualizacoes)
+    assert (after["atualizacoes"], after["alteram"]) == (before["atualizacoes"], before["alteram"])
     assert not q(
         driver,
         "MATCH (:Norma {id: $de})-[r]->(:Norma {id: $para}) WHERE type(r) = toUpper($rel) RETURN r.fonte",
@@ -145,14 +182,17 @@ def test_incremental_applies_upstream_changes(env):
     assert ing == {"sha": new_sha, "modo": "incremental"}
 
 
-def test_new_splitter_version_forces_full_reload(env):
+@pytest.mark.parametrize("campo, versao", [("divisao", dispositivos.VERSAO), ("atualizacoes", atualizacoes.VERSAO)])
+def test_new_parser_version_forces_full_reload(env, campo, versao):
     driver, settings, ups, _ = env
     assert ingest(driver, settings, ups, full=True)
     before = snapshot(driver)
-    driver.execute_query("MATCH (i:Ingestao) SET i.divisao = $v, i.modo = 'x'", v=dispositivos.VERSAO - 1)
-    driver.execute_query("MATCH (d:Dispositivo) DETACH DELETE d")  # as if the old splitter had built none
+    driver.execute_query(f"MATCH (i:Ingestao) SET i.{campo} = $v, i.modo = 'x'", v=versao - 1)
+    # as if the old version had built none
+    driver.execute_query("MATCH (d:Dispositivo) DETACH DELETE d")
+    driver.execute_query("MATCH (a:Atualizacao) DETACH DELETE a")
 
     assert ingest(driver, settings, ups, full=False)  # same upstream SHA: would be a no-op without the version check
     assert snapshot(driver) == before
-    modos = q(driver, "MATCH (i:Ingestao) RETURN i.modo AS m, i.divisao AS v")
-    assert modos == [{"m": "full", "v": dispositivos.VERSAO}] * 2
+    modos = q(driver, f"MATCH (i:Ingestao) RETURN i.modo AS m, i.{campo} AS v")
+    assert modos == [{"m": "full", "v": versao}] * 2
