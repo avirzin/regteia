@@ -29,3 +29,28 @@ def prefixo(norma_id: str) -> str:
 def validate_id(norma_id: str) -> str:
     prefixo(norma_id)
     return norma_id
+
+
+_TIPO_FEDERAL = {
+    "lei": "Lei",
+    "lcp": "Lei Complementar",
+    "ldl": "Lei Delegada",
+    "del": "Decreto-Lei",
+    "dec": "Decreto",
+    "mpv": "Medida Provisória",
+}
+# "lei:14478-2022"; medidas provisórias may carry the reissue number: "mpv:1470-14-1996"
+_FEDERAL = re.compile(r"^(?P<p>[a-z]+):(?P<n>\d+)(?:-(?P<r>\d+))?-(?P<a>\d{4})$")
+
+
+def nome_federal(norma_id: str) -> str | None:
+    """Readable name of a federal act from its ID ("lei:14478-2022" -> "Lei nº 14.478/2022"), None otherwise.
+
+    Federal acts are stubs (no title) until ctresb/leis is ingested; this only reformats the ID, it adds nothing.
+    """
+    m = _FEDERAL.match(norma_id)
+    if not m or m["p"] not in _TIPO_FEDERAL:
+        return None
+    numero = f"{int(m['n']):,}".replace(",", ".")
+    reedicao = f"-{m['r']}" if m["r"] else ""
+    return f"{_TIPO_FEDERAL[m['p']]} nº {numero}{reedicao}/{m['a']}"

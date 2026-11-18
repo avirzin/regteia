@@ -4,8 +4,8 @@ official source (`fonte_url`)."""
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
-from regteia_schema import Estado
+from pydantic import BaseModel, Field, model_validator
+from regteia_schema import Estado, nome_federal
 from regteia_schema.env import AVISO
 
 Direcao = Literal["saida", "entrada"]
@@ -28,6 +28,13 @@ class NormaResumo(BaseModel):
     ocr: bool | None = None
     cancelada: bool | None = None
     estado_por: list[str] = Field(default_factory=list)  # titles of the norms upstream says revoked/amended this one
+
+    @model_validator(mode="after")
+    def _nome_dos_stubs(self) -> "NormaResumo":
+        # federal acts have no title until ctresb/leis is ingested: name them from the ID ("Lei nº 14.478/2022")
+        if self.titulo is None:
+            self.titulo = nome_federal(self.id)
+        return self
 
     @property
     def situacao(self) -> str:

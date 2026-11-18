@@ -16,6 +16,7 @@ from .modelos import (
 )
 from .resolver import candidatos, escapar_lucene, separar_dispositivo
 from .sinonimos import expandir
+from .texto import desquebrar
 from .trechos import trecho
 
 PESO_COMUNICADO = 0.2  # comunicados are mostly auction notices: down-ranked, never deleted
@@ -159,8 +160,8 @@ def dispositivo(db: Leitor, ref: str, *, hoje: date | None = None) -> Dispositiv
     return DispositivoDetalhe(
         norma=n,
         dispositivo=DispositivoResumo.model_validate(d),
-        texto=d["texto"],
-        redacoes_anteriores=anteriores,
+        texto=desquebrar(d["texto"]),
+        redacoes_anteriores=[desquebrar(a) for a in anteriores],
         anterior=DispositivoResumo.model_validate(r["anterior"]) if r["anterior"] else None,
         proximo=DispositivoResumo.model_validate(r["proximo"]) if r["proximo"] else None,
         notas=notas,
@@ -235,7 +236,7 @@ def _item(r: dict, consulta: str, com_texto: bool = False) -> ItemBusca:
             dispositivo=DispositivoResumo.model_validate(t),
             trecho=trecho(t["texto"], consulta),
             score=t["score"],
-            texto=_cortar(t["texto"]) if com_texto else None,
+            texto=_cortar(desquebrar(t["texto"])) if com_texto else None,
         )
         for t in r["trechos"]
     ]

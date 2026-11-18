@@ -1,6 +1,6 @@
 from .enums import Estado, Relacao
 from .graph import Dispositivo, Divisao, Norma, TipoDispositivo
-from .ids import CORPUS_PREFIXES, FEDERAL_PREFIXES, KNOWN_PREFIXES, prefixo
+from .ids import CORPUS_PREFIXES, FEDERAL_PREFIXES, KNOWN_PREFIXES, nome_federal, prefixo
 from .upstream import (
     ArestaRow,
     EstadoRow,
@@ -27,6 +27,7 @@ __all__ = [
     "Norma",
     "Relacao",
     "TipoDispositivo",
+    "nome_federal",
     "parse_nao_resolvido",
     "prefixo",
 ]

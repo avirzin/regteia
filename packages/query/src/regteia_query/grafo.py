@@ -3,7 +3,7 @@
 import hashlib
 from dataclasses import dataclass
 
-from regteia_schema import FEDERAL_PREFIXES, Estado, Relacao
+from regteia_schema import FEDERAL_PREFIXES, Estado, Relacao, nome_federal
 
 from .db import Leitor
 
@@ -71,7 +71,7 @@ def exportar_grafo(db: Leitor, *, comunicados: bool = False) -> GrafoExportado:
         versao=_chave(versao),
         comunicados=comunicados,
         ids=[n["id"] for n in nos],
-        titulos=[n["titulo"] for n in nos],
+        titulos=[n["titulo"] or nome_federal(n["id"]) for n in nos],
         grupos=[grp[grupo(n["acervo"], n["orgao"])] for n in nos],
         estados=[est["externa" if n["externo"] else n["estado"]] for n in nos],
         anos=[n["ano"] for n in nos],
