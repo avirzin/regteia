@@ -2,6 +2,7 @@
 import { api, type Estatisticas } from './api'
 import { fmt, fmtDataHora, t, tDinamico } from './i18n'
 import { barras, colunas, el, empilhadas, tabelaSimples, type Linha } from './charts'
+import { linkNorma } from './norma'
 
 // Series names are the official instrument names: they stay in Portuguese in every language.
 const SERIES: Record<string, string> = {
@@ -168,7 +169,7 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
     tabelaSimples(
       [t('est.atualizacoes.norma'), t('est.atualizacoes.entrada'), t('est.atualizacoes.motivo')],
       e.atualizacoes_falhas.map((f) => {
-        const norma = el('code', {}, f.titulo ?? f.norma)
+        const norma = el('a', { href: linkNorma(f.norma) }, f.titulo ?? f.norma)
         norma.title = f.norma
         return [norma, f.texto, tDinamico(`est.atualizacoes.resultado.${f.resultado}`, f.resultado) + (f.motivo ? ` · ${f.motivo}` : '')]
       }),

@@ -7,11 +7,13 @@ from .db import Leitor
 from .modelos import (
     DispositivoDetalhe,
     DispositivoResumo,
+    DispositivoTexto,
     GrupoRelacoes,
     ItemBusca,
     NormaDetalhe,
     NormaResumo,
     ResultadoBusca,
+    TextoNorma,
     Trecho,
 )
 from .resolver import candidatos, escapar_lucene, separar_dispositivo
@@ -263,3 +265,24 @@ def _cortar(texto: str, limite: int = TEXTO_INTEGRAL_MAX) -> str:
     corte = texto.rfind("\n", 0, limite)
     corte = corte if corte > limite // 2 else limite
     return texto[:corte].rstrip() + "\n[… texto cortado: leia o dispositivo inteiro com `dispositivo`]"
+
+
+def texto_norma(db: Leitor, ref: str) -> TextoNorma:
+    """A norm's whole text by Dispositivo (latest published wording, line wrapping undone), for the norm page."""
+    n = resolver(db, separar_dispositivo(ref)[0])
+    rows = db.ler("norma_texto", id=n.id)
+    r = rows[0] if rows else {"divisao": None, "dispositivos": []}
+    return TextoNorma(
+        norma=n,
+        divisao=r["divisao"],
+        dispositivos=[
+            DispositivoTexto.model_validate(
+                {
+                    **d,
+                    "texto": desquebrar(d["texto"] or ""),
+                    "redacoes_anteriores": [desquebrar(a) for a in d.get("redacoes_anteriores") or []],
+                }
+            )
+            for d in r["dispositivos"]
+        ],
+    )

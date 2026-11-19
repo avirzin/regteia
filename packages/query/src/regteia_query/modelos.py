@@ -159,6 +159,50 @@ class Vigencia(BaseModel):
     aviso: str = AVISO
 
 
+class VigenciaDispositivo(BaseModel):
+    """One Dispositivo's status on a date, inside `VigenciaNorma` (the norm page's "in force on" switch)."""
+
+    id: str
+    chave: str
+    rotulo: str
+    tipo: str | None = None  # None for a Dispositivo missing from the text
+    no_texto: bool  # False: the history names it but the portal's text doesn't have it
+    revogado_hoje: bool = False  # the portal shows it revoked
+    situacao: SituacaoVigencia
+    motivo: str
+    texto_na_data: Literal["armazenado", "desconhecido", "sem_texto"]
+    eventos: int  # article-level events recorded for it
+    posteriores: int  # of which take effect after the date (or have no date)
+
+
+class VigenciaNorma(BaseModel):
+    """A norm and all its Dispositivos on one date. `eventos` is the norm's whole recorded history."""
+
+    ref: str
+    data: date
+    norma: NormaResumo
+    situacao: SituacaoVigencia
+    motivo: str
+    eventos: list[EventoVigencia]
+    dispositivos: list[VigenciaDispositivo]
+    notas: list[str]
+    aviso: str = AVISO
+
+
+class DispositivoTexto(DispositivoResumo):
+    texto: str  # latest published wording
+    redacoes_anteriores: list[str] = Field(default_factory=list)
+
+
+class TextoNorma(BaseModel):
+    """A norm's whole text, Dispositivo by Dispositivo, in reading order (latest published wording)."""
+
+    norma: NormaResumo
+    divisao: str | None = None
+    dispositivos: list[DispositivoTexto]
+    aviso: str = AVISO
+
+
 class Trecho(BaseModel):
     """A Dispositivo that matched a search, with a short excerpt around the match."""
 
@@ -192,6 +236,7 @@ class Aresta(BaseModel):
 class NoSubgrafo(BaseModel):
     norma: NormaResumo
     distancia: int
+    grupo: str = "Outros"  # issuing body, as the overview colors it (grafo.GRUPOS)
 
 
 class Subgrafo(BaseModel):

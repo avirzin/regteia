@@ -6,6 +6,7 @@ import type { Table } from 'apache-arrow'
 import { api, ErroApi, type NormaDetalhe } from './api'
 import { el, esconderDica, mostrarDica } from './charts'
 import { fmt, fmtData, idioma, t, tDinamico } from './i18n'
+import { linkNorma } from './norma'
 
 const GRUPO_VAR = ['--grupo-cmn', '--grupo-bcb', '--grupo-cvm', '--grupo-lei', '--grupo-outros']
 const GRUPO_FORMA = [PointShape.Circle, PointShape.Circle, PointShape.Circle, PointShape.Square, PointShape.Diamond]
@@ -276,6 +277,9 @@ export async function paginaVisaoGeral(main: HTMLElement, comunicados = false): 
     if (n.url_externa) links.append(linkSeguro(n.url_externa, t('visao.ondeEsta')))
     painel.append(links)
     if (n.ementa) painel.append(el('p', {}, n.ementa))
+    const abrir = el('p')
+    abrir.append(el('a', { href: linkNorma(n.id), class: 'abrir' }, t('visao.abrirPagina')))
+    painel.append(abrir)
     if (d.sumario.length) {
       const artigos = d.sumario.filter((x) => x.tipo === 'artigo')
       const revogados = d.sumario.filter((x) => x.revogado).length

@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@cosmos.gl/graph": "^3.6.0",
-    "apache-arrow": "^21.2.0"
+    "apache-arrow": "^21.2.0",
+    "cytoscape": "^3.35.0",
+    "cytoscape-dagre": "^4.1.0"
   },
   "devDependencies": {
+    "@types/cytoscape-dagre": "^2.3.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }

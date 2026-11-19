@@ -14,6 +14,8 @@ from regteia_query import (
     norma,
     panorama,
     relacoes,
+    texto_norma,
+    vigencia_dispositivos,
     vigencia_em,
 )
 from regteia_schema.env import AVISO
@@ -222,3 +224,33 @@ def test_vigencia_em_revoked_norm(db):
     assert vigencia_em(db, "bcb:carta-circular:1", date(1980, 1, 1), hoje=HOJE).situacao == "revogada"
     # a federal law stub: no history, never a guess
     assert vigencia_em(db, "Lei nº 4.595/1964", HOJE, hoje=HOJE).situacao == "indeterminada"
+
+
+def test_vigencia_dispositivos_whole_norm_on_a_date(db):
+    r = vigencia_dispositivos(db, "Resolução BCB 520", date(2026, 12, 31), hoje=HOJE)
+    assert r.situacao == "vigente" and r.aviso == AVISO
+    chaves = [d.chave for d in r.dispositivos]
+    # the articles the portal doesn't publish yet sit right after art. 90, in reading order
+    assert chaves[chaves.index("art-90") : chaves.index("art-90") + 4] == ["art-90", "art-90-a", "art-90-b", "art-91"]
+    por = {d.chave: d for d in r.dispositivos}
+    assert (por["art-90-a"].situacao, por["art-90-a"].no_texto, por["art-90-a"].rotulo) == (
+        "nao_vigente",
+        False,
+        "Art. 90-A",
+    )
+    assert (por["art-88"].texto_na_data, por["art-88"].posteriores) == ("desconhecido", 1)
+    assert (por["art-91"].texto_na_data, por["art-1"].texto_na_data) == ("armazenado", "armazenado")
+    # each one agrees with vigencia_em
+    for k in ("art-88", "art-90-a", "art-91"):
+        um = vigencia_em(db, f"bcb:resolucao-bcb:520#{k}", date(2026, 12, 31), hoje=HOJE)
+        assert (um.situacao, um.texto_na_data) == (por[k].situacao, por[k].texto_na_data)
+    rev = vigencia_dispositivos(db, "Circular 1", date(1967, 1, 2), hoje=HOJE)
+    assert rev.situacao == "revogada" and all(d.situacao == "revogada" for d in rev.dispositivos)
+
+
+def test_texto_norma(db):
+    r = texto_norma(db, "Resolução BCB 520")
+    assert r.divisao == "artigos" and len(r.dispositivos) == 94
+    art91 = next(d for d in r.dispositivos if d.id.endswith("#art-91"))
+    assert art91.texto.startswith("Art. 91") and art91.redacoes_anteriores
+    assert relacoes(db, "bcb:resolucao-bcb:589").nos[0].grupo == "BCB"

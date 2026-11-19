@@ -19,6 +19,8 @@ export interface NormaResumo {
   url_externa: string | null
   versao_texto: string | null
   ocr: boolean | null
+  cancelada?: boolean | null
+  estado_por?: string[]
 }
 
 export interface GrupoRelacoes {
@@ -42,6 +44,70 @@ export interface NormaDetalhe {
   notas: string[]
   divisao: string | null
   sumario: DispositivoResumo[]
+  aviso: string
+}
+
+export type Situacao = 'vigente' | 'revogada' | 'nao_vigente' | 'indeterminada'
+export type TextoNaData = 'armazenado' | 'desconhecido' | 'sem_texto'
+
+export interface EventoVigencia {
+  tipo: 'revogacao' | 'nova_redacao' | 'inclusao'
+  alcance: 'norma' | 'dispositivo' | 'parte'
+  por: { id: string; titulo: string | null; data: string | null } | null
+  data: string | null
+  origem_data: 'a_partir_de' | 'data_da_norma' | 'desconhecida'
+  aplicado: boolean | null
+  dispositivo: string | null
+  rotulo: string | null
+  detalhe: string | null
+  no_texto: boolean
+  entrada: string | null
+  fonte: string | null
+}
+
+export interface VigenciaDispositivo {
+  id: string
+  chave: string
+  rotulo: string
+  tipo: string | null
+  no_texto: boolean
+  revogado_hoje: boolean
+  situacao: Situacao
+  motivo: string
+  texto_na_data: TextoNaData
+  eventos: number
+  posteriores: number
+}
+
+export interface VigenciaNorma {
+  ref: string
+  data: string
+  norma: NormaResumo
+  situacao: Situacao
+  motivo: string
+  eventos: EventoVigencia[]
+  dispositivos: VigenciaDispositivo[]
+  notas: string[]
+  aviso: string
+}
+
+export interface DispositivoTexto extends DispositivoResumo {
+  texto: string
+  redacoes_anteriores: string[]
+}
+
+export interface TextoNorma {
+  norma: NormaResumo
+  divisao: string | null
+  dispositivos: DispositivoTexto[]
+  aviso: string
+}
+
+export interface Subgrafo {
+  origem: string
+  nos: { norma: NormaResumo; distancia: number; grupo: string }[]
+  arestas: { de: string; para: string; tipo: string; desde: string | null; fonte: string | null }[]
+  truncado: boolean
   aviso: string
 }
 
@@ -98,6 +164,14 @@ async function json<T>(url: string): Promise<T> {
 export const api = {
   estatisticas: () => json<Estatisticas>('/api/estatisticas'),
   norma: (ref: string, limite = 8) => json<NormaDetalhe>(`/api/normas/${encodeURIComponent(ref)}?limite=${limite}`),
+  texto: (ref: string) => json<TextoNorma>(`/api/texto/${encodeURIComponent(ref)}`),
+  vigencia: (ref: string, data: string) =>
+    json<VigenciaNorma>(`/api/vigencia/dispositivos?${new URLSearchParams({ ref, data })}`),
+  relacoes(ref: string, profundidade: number, tipos: string[], limite = 80): Promise<Subgrafo> {
+    const q = new URLSearchParams({ ref, direcao: 'ambas', profundidade: String(profundidade), limite: String(limite) })
+    for (const t of tipos) q.append('tipo', t)
+    return json<Subgrafo>(`/api/relacoes?${q}`)
+  },
   async grafo(comunicados: boolean): Promise<{ nos: Table; arestas: Table }> {
     const q = comunicados ? '&comunicados=true' : ''
     const [nos, arestas] = await Promise.all(

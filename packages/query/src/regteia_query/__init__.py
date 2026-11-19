@@ -3,9 +3,18 @@
 from .db import BancoIndisponivel, Leitor
 from .estatisticas import estatisticas
 from .grafo import GRUPOS, GrafoExportado, exportar_grafo, versao_dados
-from .normas import DispositivoNaoEncontrado, NormaNaoEncontrada, buscar, dispositivo, norma, panorama, resolver
+from .normas import (
+    DispositivoNaoEncontrado,
+    NormaNaoEncontrada,
+    buscar,
+    dispositivo,
+    norma,
+    panorama,
+    resolver,
+    texto_norma,
+)
 from .relacoes import relacoes
-from .vigencia import vigencia_em
+from .vigencia import vigencia_dispositivos, vigencia_em
 
 __all__ = [
     "BancoIndisponivel",
@@ -23,5 +32,7 @@ __all__ = [
     "panorama",
     "relacoes",
     "resolver",
+    "texto_norma",
+    "vigencia_dispositivos",
     "vigencia_em",
 ]

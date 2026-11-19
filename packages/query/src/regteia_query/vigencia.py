@@ -17,7 +17,15 @@ import re
 from datetime import date, timedelta
 
 from .db import Leitor
-from .modelos import DispositivoResumo, EventoVigencia, NormaCitada, NormaResumo, Vigencia
+from .modelos import (
+    DispositivoResumo,
+    EventoVigencia,
+    NormaCitada,
+    NormaResumo,
+    Vigencia,
+    VigenciaDispositivo,
+    VigenciaNorma,
+)
 from .normas import DispositivoNaoEncontrado, _datas_futuras, _proximos, resolver
 from .resolver import separar_dispositivo
 from .texto import desquebrar
@@ -238,6 +246,13 @@ def _dispositivo_em(
     return "vigente", situacao_norma[1]
 
 
+def _texto_na_data(situacao: str, no_texto: bool, eventos: list[EventoVigencia]) -> str:
+    """armazenado: the stored wording is the one of the date; desconhecido: something about it changes later."""
+    if situacao != "vigente" or not no_texto:
+        return "sem_texto"
+    return "desconhecido" if any(not e.aplicado for e in eventos) else "armazenado"
+
+
 def _nao_lidas(rows: list[dict], data: date) -> list[str]:
     """A note when entries of the norm's history that weren't read down to the article may postdate `data`."""
     duvidosas = [
@@ -316,7 +331,8 @@ def vigencia_em(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -
     situacao, motivo = _dispositivo_em((situacao, motivo), d, data, hoje, proprios)
     eventos = _ordenar(revogacoes + proprios)
 
-    texto, texto_na_data = None, "sem_texto"
+    texto = None
+    texto_na_data = _texto_na_data(situacao, d is not None, proprios)
     if situacao == "vigente" and d is None:
         notas.append(
             "O histórico registra este dispositivo, mas o texto publicado no portal ainda não o traz: o grafo não tem "
@@ -325,7 +341,6 @@ def vigencia_em(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -
     elif situacao == "vigente":
         depois = [e for e in proprios if not e.aplicado]
         if depois:
-            texto_na_data = "desconhecido"
             mudancas = "; ".join(
                 f"{TIPO[e.tipo]}{f' ({e.detalhe})' if e.detalhe else ''} por {_por(e)}, "
                 f"{'a partir de ' + _data(e.data) if e.data else 'sem data'}"
@@ -337,7 +352,6 @@ def vigencia_em(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -
                 "a redação dessa data, e ela não deve ser reconstruída.",
             )
         else:
-            texto_na_data = "armazenado"
             texto = desquebrar(d["texto"])
             if n.estado == "alterada" and data < hoje:
                 notas.append(
@@ -361,5 +375,90 @@ def vigencia_em(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -
         texto_na_data=texto_na_data,
         texto=texto,
         eventos=eventos,
+        notas=notas,
+    )
+
+
+def _base(chave: str) -> str:
+    """'art-90-a' -> 'art-90': where a Dispositivo missing from the text goes in reading order."""
+    return re.sub(r"-[a-z]$", "", chave)
+
+
+def _em_ordem(sumario: list[dict], ausentes: list[str]) -> list[tuple[str, dict | None]]:
+    """(key, Dispositivo or None) in reading order: each missing key right after its base article and siblings."""
+    out: list[tuple[str, dict | None]] = [(d["id"].split("#", 1)[1], d) for d in sumario]
+    for k in ausentes:
+        base = _base(k)
+        pos = len(out)
+        for i, (c, _) in enumerate(out):
+            if c == base or (c.startswith(base + "-") and c < k):
+                pos = i + 1
+        out.insert(pos, (k, None))
+    return out
+
+
+def vigencia_dispositivos(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -> VigenciaNorma:
+    """`vigencia_em` for a norm and every one of its Dispositivos on `data`, in reading order, in one read. Also lists
+    the Dispositivos the history names but the portal's text doesn't have (e.g. included from a future date)."""
+    hoje = hoje or date.today()
+    n = resolver(db, separar_dispositivo(ref)[0])
+    if n.externo:
+        return VigenciaNorma(
+            ref=ref,
+            data=data,
+            norma=n,
+            situacao="indeterminada",
+            motivo="Norma fora dos acervos carregados: o grafo não tem a situação nem o histórico dela.",
+            eventos=[],
+            dispositivos=[],
+            notas=[],
+        )
+    rev, alt, entradas, sumario = db.ler_varios(
+        [
+            ("vigencia_revogacoes", {"id": n.id}),
+            ("vigencia_alteracoes", {"norma": n.id, "dispositivo": None}),
+            ("vigencia_entradas", {"norma": n.id}),
+            ("norma_sumario", {"id": n.id}),
+        ]
+    )
+    revogacoes = _revogacoes(rev, data)
+    alteracoes = _alteracoes(alt, data)
+    ausentes = _ausentes(entradas, n.id, data, None)
+    situacao, motivo, notas = _norma_em(n, data, hoje, revogacoes)
+    notas += _nao_lidas(entradas, data)
+    por_dispositivo: dict[str, list[EventoVigencia]] = {}
+    for e in alteracoes + ausentes:
+        por_dispositivo.setdefault(e.dispositivo, []).append(e)
+    itens = sumario[0]["sumario"] if sumario else []
+    existentes = {d["id"] for d in itens}
+    faltando = list(dict.fromkeys(e.dispositivo.split("#", 1)[1] for e in ausentes if e.dispositivo not in existentes))
+    dispositivos = []
+    for chave, d in _em_ordem(itens, faltando):
+        did = f"{n.id}#{chave}"
+        evs = por_dispositivo.get(did, [])
+        sit, mot = _dispositivo_em((situacao, motivo), d, data, hoje, evs)
+        dispositivos.append(
+            VigenciaDispositivo(
+                id=did,
+                chave=chave,
+                rotulo=d["rotulo"] if d else _rotulo(chave),
+                tipo=d["tipo"] if d else None,
+                no_texto=d is not None,
+                revogado_hoje=bool(d and d["revogado"]),
+                situacao=sit,
+                motivo=mot,
+                texto_na_data=_texto_na_data(sit, d is not None, evs),
+                eventos=len(evs),
+                posteriores=sum(1 for e in evs if not e.aplicado),
+            )
+        )
+    return VigenciaNorma(
+        ref=ref,
+        data=data,
+        norma=n,
+        situacao=situacao,
+        motivo=motivo,
+        eventos=_ordenar(revogacoes + alteracoes + ausentes),
+        dispositivos=dispositivos,
         notas=notas,
     )

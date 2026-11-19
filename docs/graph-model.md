@@ -1,8 +1,8 @@
 # Graph model
 
 Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 7 in progress (norms, Dispositivos,
-article-level amendments read from `atualizacoes`, and `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md));
-the norm page comes next).
+article-level amendments read from `atualizacoes`, `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md)),
+and the norm page that shows them).
 
 ## Nodes
 

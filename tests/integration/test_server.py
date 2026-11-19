@@ -79,3 +79,11 @@ def test_vigencia(client):
     assert (j["situacao"], j["texto_na_data"]) == ("vigente", "sem_texto") and j["aviso"]
     assert client.get("/api/vigencia", params={"ref": "Resolução BCB 520", "data": "ontem"}).status_code == 422
     assert client.get("/api/vigencia", params={"ref": "Resolução BCB 99999", "data": "2026-01-01"}).status_code == 404
+
+
+def test_norm_page_endpoints(client):
+    r = client.get("/api/vigencia/dispositivos", params={"ref": "bcb:resolucao-bcb:520", "data": "2026-12-31"})
+    assert r.status_code == 200 and len(r.json()["dispositivos"]) == 96  # 94 + arts. 90-A and 90-B
+    t = client.get("/api/texto/bcb:resolucao-bcb:520")
+    assert t.status_code == 200 and len(t.json()["dispositivos"]) == 94
+    assert client.get("/api/texto/Resolução BCB 99999").status_code == 404

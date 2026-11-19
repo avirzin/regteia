@@ -5,6 +5,7 @@ from typing import Literal
 from regteia_schema import Relacao
 
 from .db import Leitor
+from .grafo import grupo
 from .modelos import Aresta, NormaResumo, NoSubgrafo, Subgrafo
 from .normas import resolver
 
@@ -66,7 +67,10 @@ def relacoes(
 
     normas = {r["n"]["id"]: NormaResumo.model_validate(r["n"]) for r in db.ler("normas_por_id", ids=list(distancia))}
     nos = sorted(
-        (NoSubgrafo(norma=normas[i], distancia=dist) for i, dist in distancia.items()),
+        (
+            NoSubgrafo(norma=normas[i], distancia=dist, grupo=grupo(normas[i].acervo, normas[i].orgao))
+            for i, dist in distancia.items()
+        ),
         key=lambda n: (n.distancia, -(n.norma.data.toordinal() if n.norma.data else 0), n.norma.id),
     )
     return Subgrafo(

@@ -86,7 +86,8 @@
     "incluirComunicados": "Incluir comunicados",
     "painelDispositivos": "Dispositivos: {n}",
     "painelArtigos": "{n} artigos",
-    "painelRevogados": "{n} revogados"
+    "painelRevogados": "{n} revogados",
+    "abrirPagina": "Abrir a página da norma →"
   },
   "est": {
     "erro": "Não foi possível carregar as estatísticas: {erro}",
@@ -232,5 +233,50 @@
         "anexo": "Anexo"
       }
     }
+  },
+  "norma": {
+    "carregando": "Carregando a norma…",
+    "emVigorEm": "Em vigor em",
+    "hoje": "Hoje",
+    "situacao": {
+      "vigente": "Em vigor",
+      "revogada": "Revogado",
+      "nao_vigente": "Ainda não vigente",
+      "indeterminada": "Indeterminado"
+    },
+    "evento": {
+      "revogacao": "Revogação",
+      "nova_redacao": "Nova redação",
+      "inclusao": "Inclusão"
+    },
+    "sumario": "{n} dispositivos",
+    "resumoPosteriores": "{n} com redação posterior à data (*)",
+    "alteracoes": "{n} alteração(ões) registrada(s)",
+    "textoPosterior": "A redação armazenada é posterior a {data} ({n} alteração(ões) depois dessa data). O grafo não tem a redação vigente nessa data.",
+    "verTextoAtual": "Ver a redação atual (posterior à data)",
+    "verTextoArmazenado": "Ver a redação armazenada",
+    "semTextoPortal": "O texto publicado no portal ainda não traz este dispositivo.",
+    "anteriores": "{n} redação(ões) anterior(es), riscada(s) no portal",
+    "anterioresNota": "Não valem mais; servem só para ver o que mudou.",
+    "semTexto": "O portal não traz o texto desta norma; só os metadados.",
+    "externa": "Norma fora dos acervos carregados: aparece porque outras normas se referem a ela. Sem texto nem histórico.",
+    "linhaTempo": "Linha do tempo",
+    "linhaTempoSub": "Revogações e alterações registradas, pela data em que valem. Clique numa data para ver a norma nela.",
+    "publicada": "Data da norma",
+    "marcoData": "Data escolhida: {data}",
+    "marcoHoje": "Hoje",
+    "verNessaData": "Ver a norma nesta data",
+    "semData": "Sem data",
+    "normaDesconhecida": "Norma não identificada",
+    "normaInteira": "a norma inteira",
+    "foraDoTexto": "fora do texto publicado",
+    "futuro": "futuro",
+    "dataDaNorma": "data da norma que alterou",
+    "semEventos": "Nenhuma revogação ou alteração registrada.",
+    "vizinhanca": "Vizinhança",
+    "vizinhancaSub": "Normas ligadas a esta, as mais antigas à esquerda. Clique numa norma para abri-la.",
+    "saltos": "Saltos",
+    "vizinhancaStatus": "{normas} normas · {relacoes} relações",
+    "vizinhancaTruncada": "{normas} normas · {relacoes} relações (limitado: há mais; filtre os tipos)"
   }
 }

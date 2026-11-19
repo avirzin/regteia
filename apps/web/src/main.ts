@@ -1,22 +1,26 @@
 import './style.css'
 import { iniciarIdioma, t } from './i18n'
 import { paginaVisaoGeral } from './overview'
+import { paginaNorma } from './norma'
 import { paginaEstatisticas } from './stats'
 
 const main = document.getElementById('app')!
 let desmontar: (() => void) | undefined
 let comunicados = false
-let pagina: 'estatisticas' | 'visao-geral' = 'visao-geral'
+let pagina: 'estatisticas' | 'visao-geral' | 'norma' = 'visao-geral'
 
 async function rota(): Promise<void> {
   desmontar?.()
   desmontar = undefined
-  pagina = location.hash.startsWith('#/estatisticas') ? 'estatisticas' : 'visao-geral'
+  const norma = /^#\/norma\/([^?]+)(?:\?data=(\d{4}-\d{2}-\d{2}))?/.exec(location.hash)
+  pagina = norma ? 'norma' : location.hash.startsWith('#/estatisticas') ? 'estatisticas' : 'visao-geral'
   document.querySelectorAll<HTMLAnchorElement>('nav a').forEach((a) => {
     if (a.dataset.rota === pagina) a.setAttribute('aria-current', 'page')
     else a.removeAttribute('aria-current')
   })
-  if (pagina === 'estatisticas') {
+  if (norma) {
+    desmontar = await paginaNorma(main, decodeURIComponent(norma[1]), norma[2])
+  } else if (pagina === 'estatisticas') {
     document.title = `${t('app.nav.estatisticas')} · Regteia`
     await paginaEstatisticas(main)
   } else {
@@ -41,8 +45,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => wind
 // Language: the overview re-translates itself in place (keeps the layout); the dashboard is cheap to redraw.
 iniciarIdioma()
 window.addEventListener('regteia:idioma', () => {
-  document.title = `${t(pagina === 'estatisticas' ? 'app.nav.estatisticas' : 'app.nav.visaoGeral')} · Regteia`
-  if (pagina === 'estatisticas') void rota()
+  if (pagina === 'norma' || pagina === 'estatisticas') void rota()
+  else document.title = `${t('app.nav.visaoGeral')} · Regteia`
 })
 
 window.addEventListener('regteia:comunicados', (e) => {

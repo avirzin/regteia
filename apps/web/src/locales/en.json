@@ -86,7 +86,8 @@
     "incluirComunicados": "Include notices (comunicados)",
     "painelDispositivos": "Provisions: {n}",
     "painelArtigos": "{n} articles",
-    "painelRevogados": "{n} revoked"
+    "painelRevogados": "{n} revoked",
+    "abrirPagina": "Open the norm's page →"
   },
   "est": {
     "erro": "Could not load the statistics: {erro}",
@@ -232,5 +233,50 @@
         "anexo": "Annex"
       }
     }
+  },
+  "norma": {
+    "carregando": "Loading the norm…",
+    "emVigorEm": "In force on",
+    "hoje": "Today",
+    "situacao": {
+      "vigente": "In force",
+      "revogada": "Revoked",
+      "nao_vigente": "Not yet in force",
+      "indeterminada": "Undetermined"
+    },
+    "evento": {
+      "revogacao": "Revocation",
+      "nova_redacao": "New wording",
+      "inclusao": "Inclusion"
+    },
+    "sumario": "{n} provisions",
+    "resumoPosteriores": "{n} with wording later than the date (*)",
+    "alteracoes": "{n} recorded change(s)",
+    "textoPosterior": "The stored wording is later than {data} ({n} change(s) after that date). The graph doesn't have the wording in force on that date.",
+    "verTextoAtual": "Show the current wording (later than the date)",
+    "verTextoArmazenado": "Show the stored wording",
+    "semTextoPortal": "The text published on the portal doesn't include this provision yet.",
+    "anteriores": "{n} earlier wording(s), struck through on the portal",
+    "anterioresNota": "No longer in force; only to see what changed.",
+    "semTexto": "The portal has no text for this norm, only its metadata.",
+    "externa": "Norm outside the loaded corpora: it appears because other norms refer to it. No text or history.",
+    "linhaTempo": "Timeline",
+    "linhaTempoSub": "Recorded revocations and amendments, by the date they take effect. Click a date to see the norm on it.",
+    "publicada": "Date of the norm",
+    "marcoData": "Chosen date: {data}",
+    "marcoHoje": "Today",
+    "verNessaData": "See the norm on this date",
+    "semData": "No date",
+    "normaDesconhecida": "Unidentified norm",
+    "normaInteira": "the whole norm",
+    "foraDoTexto": "not in the published text",
+    "futuro": "future",
+    "dataDaNorma": "date of the amending norm",
+    "semEventos": "No recorded revocation or amendment.",
+    "vizinhanca": "Neighborhood",
+    "vizinhancaSub": "Norms linked to this one, older ones on the left. Click a norm to open it.",
+    "saltos": "Hops",
+    "vizinhancaStatus": "{normas} norms · {relacoes} relations",
+    "vizinhancaTruncada": "{normas} norms · {relacoes} relations (capped: there are more; filter the types)"
   }
 }
