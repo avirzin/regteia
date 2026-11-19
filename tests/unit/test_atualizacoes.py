@@ -37,7 +37,7 @@ def test_res_bcb_520_future_amendment():
     ligado = ligar(lido, {"art-88", "art-90", "art-91"})
     assert ligado.resultado == "parcial"
     assert [a.chave for a in ligado.alvos] == ["art-88"]
-    assert ligado.ausentes_detalhe == (("art-90-a", "inclusao", jan), ("art-90-b", "inclusao", jan))
+    assert ligado.ausentes_alvos == (Alvo("art-90-a", "inclusao", jan), Alvo("art-90-b", "inclusao", jan))
 
 
 def test_whole_norm_events():

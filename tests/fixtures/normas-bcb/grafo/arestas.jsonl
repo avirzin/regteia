@@ -50,3 +50,8 @@
 {"de":"bcb:resolucao-bcb:589","para":"lei:4728-1965","relacao":"regulamenta","desde":null,"fonte":"referencias"}
 {"de":"bcb:resolucao-cmn:102","para":"lei:4595-1964","relacao":"regulamenta","desde":null,"fonte":"referencias"}
 {"de":"bcb:resolucao-cmn:102","para":"lei:5474-1968","relacao":"regulamenta","desde":null,"fonte":"referencias"}
+{"de":"bcb:circular:3081","para":"bcb:carta-circular:1","relacao":"revoga","desde":null,"fonte":"atualizacoes+referencias"}
+{"de":"bcb:circular:58","para":"bcb:circular:1","relacao":"revoga","desde":"1967-01-01","fonte":"atualizacoes"}
+{"de":"bcb:instrucao-normativa-bcb:266","para":"bcb:carta-circular:1","relacao":"revoga","desde":"2022-05-02","fonte":"referencias"}
+{"de":"bcb:resolucao-cmn:469","para":"bcb:carta-circular:1","relacao":"revoga","desde":"1978-06-01","fonte":"referencias"}
+{"de":"bcb:resolucao-cmn:469","para":"bcb:circular:1","relacao":"revoga","desde":"1978-06-01","fonte":"referencias"}

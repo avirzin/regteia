@@ -40,7 +40,7 @@ def server(leitor):
 def test_tools_are_fixed_and_read_only(server):
     ferramentas, _ = _chamar(server)
     nomes = sorted(t.name for t in ferramentas.tools)
-    assert nomes == ["buscar", "dispositivo", "norma", "panorama", "relacoes"]
+    assert nomes == ["buscar", "dispositivo", "norma", "panorama", "relacoes", "vigencia_em"]
     for t in ferramentas.tools:
         assert t.annotations.read_only_hint is True and t.annotations.destructive_hint is False, t.name
         assert "cypher" not in (t.description or "").lower()
@@ -76,6 +76,18 @@ def test_norma_dispositivo_relacoes_panorama(server):
     assert "Resolução BCB N° 520" in r and "ALTERA" in r
     situacoes = [x.split("\n")[0] for x in p.split("Situação: ")[1:]]
     assert situacoes and all(s.startswith("VIGENTE") for s in situacoes)  # panorama: never a revoked norm
+
+
+def test_vigencia_em(server):
+    _, [antes, depois] = _chamar(
+        server,
+        ("vigencia_em", {"ref": "Resolução BCB 520, art. 88", "data": "2026-12-31"}),
+        ("vigencia_em", {"ref": "Resolução BCB 520, art. 90-A", "data": "2026-12-31"}),
+    )
+    assert "Art. 88 em 31/12/2026: EM VIGOR" in antes
+    assert "Texto nessa data: indisponível" in antes and "Eventos posteriores à data (1)" in antes
+    assert "AINDA NÃO VIGENTE" in depois and "fora do texto publicado" in depois
+    assert antes.rstrip().endswith(AVISO)
 
 
 def test_errors_come_back_as_text_with_suggestions(server):

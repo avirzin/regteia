@@ -1,6 +1,6 @@
 // One node per `atualizacoes` entry of a norm, in upstream's order: the raw text, the amending norm, how it was read,
 // and the targets that matched no Dispositivo. Rows: {norma, ordem, texto, de, resultado, motivo, ausentes,
-// ausentes_tipo, ausentes_desde}.
+// ausentes_tipo, ausentes_desde, ausentes_detalhe}.
 UNWIND $rows AS row
 MATCH (n:Norma {id: row.norma})
 CREATE (a:Atualizacao {id: row.norma + '#atualizacao-' + toString(row.ordem)})

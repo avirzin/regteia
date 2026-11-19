@@ -35,7 +35,7 @@ redação: art. 88…") and an uppercase code until about 2010 (`ALTERACAO: ART/
    annex; an article missing from the main body is the one in the only annex that has it.
 5. **Nothing is dropped.** Every entry becomes an `(:Atualizacao)` node with how it was read; the stats page lists
    every `falha` and every `parcial` with an unreadable clause. Targets that match no Dispositivo are stored on the
-   entry (key, type, date), because many are real: Res. BCB 589 includes arts. 90-A and 90-B of Res. BCB 520 from
+   entry (key, type, date, detail; the detail since parser version 2), because many are real: Res. BCB 589 includes arts. 90-A and 90-B of Res. BCB 520 from
    1/1/2027, and the portal's consolidated text doesn't have them yet.
 6. **Edges are rebuilt with the norm.** Entries live in the amended norm's file, so its entries and the `ALTERA`
    edges into its Dispositivos are replaced whenever that norm is read. The parser is versioned like the splitter

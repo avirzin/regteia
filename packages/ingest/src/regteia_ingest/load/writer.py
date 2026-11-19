@@ -74,8 +74,9 @@ def _entradas(norma: str, leituras: list[atualizacoes.Leitura]) -> tuple[list[di
                 "motivo": x.motivo,
                 # Neo4j lists can't hold nulls: no date is ""
                 "ausentes": list(x.ausentes) or None,
-                "ausentes_tipo": [t for _, t, _ in x.ausentes_detalhe] or None,
-                "ausentes_desde": [d.isoformat() if d else "" for _, _, d in x.ausentes_detalhe] or None,
+                "ausentes_tipo": [a.tipo for a in x.ausentes_alvos] or None,
+                "ausentes_desde": [str(a.a_partir_de or "") for a in x.ausentes_alvos] or None,
+                "ausentes_detalhe": [a.detalhe or "" for a in x.ausentes_alvos] or None,
             }
         )
         for a in x.alvos:

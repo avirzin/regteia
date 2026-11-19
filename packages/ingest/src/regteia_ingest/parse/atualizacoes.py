@@ -40,7 +40,7 @@ from typing import Literal
 
 from .citacoes import autor_da_atualizacao, citar, plano, sem_datas
 
-VERSAO = 1  # bump when the rules change: the next ingest re-reads every entry
+VERSAO = 2  # bump when the rules change: the next ingest re-reads every entry
 
 TipoAlteracao = Literal["nova_redacao", "inclusao", "revogacao"]
 Resultado = Literal["dispositivos", "parcial", "norma", "nota", "falha", "ausente"]
@@ -129,7 +129,7 @@ class Leitura:
     motivo: str | None = None
     alvos: tuple[Alvo, ...] = ()
     ausentes: tuple[str, ...] = field(default=())  # targets not found among the norm's Dispositivos (after `ligar`)
-    ausentes_detalhe: tuple[tuple[str, TipoAlteracao, date | None], ...] = field(default=())  # (key, type, date)
+    ausentes_alvos: tuple[Alvo, ...] = field(default=())  # the same, whole: type, date and detail
 
 
 def _plano(s: str) -> str:
@@ -464,7 +464,7 @@ def ligar(leitura: Leitura, chaves: set[str]) -> Leitura:
     out = _juntar(out)
     falta = {
         "ausentes": tuple(a.chave for a in ausentes),
-        "ausentes_detalhe": tuple((a.chave, a.tipo, a.a_partir_de) for a in ausentes),
+        "ausentes_alvos": tuple(ausentes),
     }
     if not out:
         return replace(leitura, resultado="ausente", alvos=(), **falta)

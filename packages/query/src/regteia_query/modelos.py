@@ -100,6 +100,65 @@ class DispositivoDetalhe(BaseModel):
     aviso: str = AVISO
 
 
+SituacaoVigencia = Literal["vigente", "revogada", "nao_vigente", "indeterminada"]
+
+
+class NormaCitada(BaseModel):
+    """A norm named in an event: enough to cite it."""
+
+    id: str
+    titulo: str | None = None
+    data: date | None = None
+
+    @model_validator(mode="after")
+    def _nome_dos_stubs(self) -> "NormaCitada":
+        if self.titulo is None:
+            self.titulo = nome_federal(self.id)
+        return self
+
+    @property
+    def rotulo(self) -> str:
+        return self.titulo or self.id
+
+
+class EventoVigencia(BaseModel):
+    """One event in a norm's or Dispositivo's history, as the graph records it."""
+
+    tipo: Literal["revogacao", "nova_redacao", "inclusao"]
+    alcance: Literal["norma", "dispositivo", "parte"]  # parte: only part of the Dispositivo (`detalhe`)
+    por: NormaCitada | None = None
+    data: date | None = None  # when it takes effect; None: the graph doesn't know
+    origem_data: Literal["a_partir_de", "data_da_norma", "desconhecida"]  # a_partir_de: stated in the entry/edge
+    aplicado: bool | None = None  # in effect on the date asked (None: date unknown)
+    dispositivo: str | None = None  # id
+    rotulo: str | None = None
+    detalhe: str | None = None  # what inside the Dispositivo: "inciso III", "caput"
+    no_texto: bool = True  # False: the Dispositivo is not in the portal's text (e.g. included from a future date)
+    entrada: str | None = None  # the upstream `atualizacoes` entry, as written
+    fonte: str | None = None  # "atualizacoes", or the REVOGA edge's upstream field(s)
+
+
+class Vigencia(BaseModel):
+    """Whether a norm, or one of its Dispositivos, applied on a date. Status over time, not text over time: `texto`
+    is set only when the stored (latest published) wording is the one that applied on that date."""
+
+    ref: str
+    data: date
+    norma: NormaResumo
+    dispositivo: DispositivoResumo | None = None  # None for a norm, or for a Dispositivo missing from the text
+    chave: str | None = None  # the Dispositivo asked for ("art-90-a"), even when it is missing from the text
+    rotulo: str | None = None  # its label ("Art. 90-A")
+    situacao: SituacaoVigencia
+    motivo: str  # one sentence: why
+    # for a Dispositivo: armazenado (the stored text applied on `data`), desconhecido (changed after `data`: the
+    # graph doesn't have the wording of that date), sem_texto (not in force, or not in the portal's text)
+    texto_na_data: Literal["armazenado", "desconhecido", "sem_texto"] | None = None
+    texto: str | None = None
+    eventos: list[EventoVigencia]  # by date; undated last
+    notas: list[str]
+    aviso: str = AVISO
+
+
 class Trecho(BaseModel):
     """A Dispositivo that matched a search, with a short excerpt around the match."""
 

@@ -5,6 +5,7 @@ from .estatisticas import estatisticas
 from .grafo import GRUPOS, GrafoExportado, exportar_grafo, versao_dados
 from .normas import DispositivoNaoEncontrado, NormaNaoEncontrada, buscar, dispositivo, norma, panorama, resolver
 from .relacoes import relacoes
+from .vigencia import vigencia_em
 
 __all__ = [
     "BancoIndisponivel",
@@ -22,4 +23,5 @@ __all__ = [
     "panorama",
     "relacoes",
     "resolver",
+    "vigencia_em",
 ]

@@ -1,7 +1,8 @@
 # Graph model
 
 Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 7 in progress (norms, Dispositivos,
-and article-level amendments read from `atualizacoes`; `vigencia_em` and the norm page come next).
+article-level amendments read from `atualizacoes`, and `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md));
+the norm page comes next).
 
 ## Nodes
 
@@ -75,7 +76,7 @@ norm is read again. `id` `<norma>#atualizacao-<ordem>`.
 | `de` | the amending norm (upstream ID, read with upstream's own rules); null for notes and unreadable entries |
 | `resultado` | `dispositivos` (every target matched), `parcial`, `ausente` (read, but no target is among the norm's Dispositivos), `norma` (whole-norm event: total revocation, no detail, a consolidated manual), `nota` (an observation, or about another norm), `falha` |
 | `motivo` | why, for everything but `dispositivos`; for `falha`/`parcial`, the clause that could not be read |
-| `ausentes`, `ausentes_tipo`, `ausentes_desde` | parallel lists: targets that matched no Dispositivo (`art-90-a`), their type, and start date (`""` if none) |
+| `ausentes`, `ausentes_tipo`, `ausentes_desde`, `ausentes_detalhe` | parallel lists: targets that matched no Dispositivo (`art-90-a`), their type, start date and detail (`""` if none) |
 
 ### `(:Ingestao {fonte, sha, em, arquivos, modo, divisao, atualizacoes})`
 

@@ -6,10 +6,12 @@ the disclaimer. Texts are capped so one call never floods the client's context.
 
 from regteia_query.modelos import (
     DispositivoDetalhe,
+    EventoVigencia,
     NormaDetalhe,
     NormaResumo,
     ResultadoBusca,
     Subgrafo,
+    Vigencia,
 )
 from regteia_schema.env import AVISO
 
@@ -160,6 +162,58 @@ def subgrafo(r: Subgrafo) -> str:
         ["Resultado truncado pelo limite: há mais normas (aumente o limite ou filtre os tipos)."] if r.truncado else []
     )
     return _fim(partes, notas)
+
+
+SITUACAO_VIGENCIA = {
+    "vigente": "EM VIGOR",
+    "revogada": "REVOGADA",
+    "nao_vigente": "AINDA NÃO VIGENTE",
+    "indeterminada": "INDETERMINADA (o grafo não tem dados para afirmar)",
+}
+TIPO_EVENTO = {"revogacao": "revogação", "nova_redacao": "nova redação", "inclusao": "inclusão"}
+EVENTOS_MAX = 40  # events listed per group in `vigencia`
+
+
+def _evento(e: EventoVigencia) -> str:
+    quando = f"{e.data:%d/%m/%Y}" if e.data else "sem data"
+    if e.origem_data == "data_da_norma":
+        quando += " (data da norma que alterou)"
+    alvo = "a norma inteira" if e.alcance == "norma" else (e.rotulo or e.dispositivo or "")
+    if e.detalhe:
+        alvo += f", {e.detalhe}"
+    if not e.no_texto:
+        alvo += " (fora do texto publicado no portal)"
+    por = f"{e.por.rotulo} `{e.por.id}`" if e.por else "norma não identificada"
+    return f"- {quando}: {TIPO_EVENTO[e.tipo]} — {alvo} — por {por}"
+
+
+def vigencia(r: Vigencia) -> str:
+    alvo = _nome(r.norma)
+    if r.chave:
+        alvo += f", {r.rotulo}"
+    partes = [
+        f"# {alvo} em {r.data:%d/%m/%Y}: {SITUACAO_VIGENCIA[r.situacao]}",
+        r.motivo,
+        ficha(r.norma) + (f"\nDispositivo: `{r.norma.id}#{r.chave}`" if r.chave else ""),
+    ]
+    grupos = (
+        ("Eventos que já valiam na data", [e for e in r.eventos if e.aplicado]),
+        ("Eventos posteriores à data", [e for e in r.eventos if e.aplicado is False]),
+        ("Eventos sem data", [e for e in r.eventos if e.aplicado is None]),
+    )
+    for titulo, evs in grupos:
+        if not evs:
+            continue
+        mostrados = evs[-EVENTOS_MAX:] if titulo.startswith("Eventos que") else evs[:EVENTOS_MAX]
+        linhas = [f"**{titulo} ({len(evs)})**", *(_evento(e) for e in mostrados)]
+        if len(evs) > len(mostrados):
+            linhas.append(f"- … e mais {len(evs) - len(mostrados)}")
+        partes.append("\n".join(linhas))
+    if r.texto_na_data == "armazenado" and r.texto:
+        partes.append(f"**Texto (a redação armazenada é a que valia nessa data)**\n{_cortar(r.texto, TEXTO_MAX)}")
+    elif r.texto_na_data == "desconhecido":
+        partes.append("**Texto nessa data: indisponível.** O grafo só tem a redação atual, posterior a essa data.")
+    return _fim(partes, r.notas)
 
 
 def erro(msg: str, sugestoes: list[tuple[str, str]] | None = None) -> str:

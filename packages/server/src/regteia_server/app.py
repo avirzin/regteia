@@ -4,6 +4,7 @@ import os
 import threading
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -20,8 +21,9 @@ from regteia_query import (
     panorama,
     relacoes,
     versao_dados,
+    vigencia_em,
 )
-from regteia_query.modelos import DispositivoDetalhe, Estatisticas, NormaDetalhe, ResultadoBusca, Subgrafo
+from regteia_query.modelos import DispositivoDetalhe, Estatisticas, NormaDetalhe, ResultadoBusca, Subgrafo, Vigencia
 from regteia_query.relacoes import PROFUNDIDADE_MAX
 
 from . import arrow
@@ -127,6 +129,16 @@ def create_app(leitor: Callable[[], Leitor] = Leitor.do_ambiente, web_dist: Path
             raise nao_encontrada(e) from None
         except ValueError as e:
             raise HTTPException(422, str(e)) from None
+
+    @app.get("/api/vigencia")
+    def get_vigencia(ref: str, data: date) -> Vigencia:
+        """Was a norm or Dispositivo in force on `data` (YYYY-MM-DD), and is the stored text that date's wording."""
+        try:
+            return vigencia_em(db(), ref, data)
+        except NormaNaoEncontrada as e:
+            raise nao_encontrada(e) from None
+        except ValueError as e:
+            raise HTTPException(422, {"erro": str(e)}) from None
 
     @app.get("/api/grafo.arrow", responses={200: {"content": {ARROW: {}}}})
     def get_grafo(

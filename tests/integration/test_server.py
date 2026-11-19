@@ -70,3 +70,12 @@ def test_dispositivo_and_buscar_trechos(client):
     assert client.get("/api/dispositivos/Resolução BCB 520").status_code == 422
     b = client.get("/api/buscar", params={"q": "embaralhadores"}).json()
     assert b["itens"][0]["trechos"][0]["dispositivo"]["id"] == "bcb:resolucao-bcb:520#art-90"
+
+
+def test_vigencia(client):
+    r = client.get("/api/vigencia", params={"ref": "bcb:resolucao-bcb:520#art-90-a", "data": "2027-01-02"})
+    assert r.status_code == 200
+    j = r.json()
+    assert (j["situacao"], j["texto_na_data"]) == ("vigente", "sem_texto") and j["aviso"]
+    assert client.get("/api/vigencia", params={"ref": "Resolução BCB 520", "data": "ontem"}).status_code == 422
+    assert client.get("/api/vigencia", params={"ref": "Resolução BCB 99999", "data": "2026-01-01"}).status_code == 404

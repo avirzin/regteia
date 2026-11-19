@@ -10,6 +10,7 @@ import logging
 import sys
 import threading
 from collections.abc import Callable
+from datetime import date
 from typing import Annotated, Literal
 
 from mcp.server import MCPServer
@@ -21,6 +22,7 @@ from regteia_query import dispositivo as q_dispositivo
 from regteia_query import norma as q_norma
 from regteia_query import panorama as q_panorama
 from regteia_query import relacoes as q_relacoes
+from regteia_query import vigencia_em as q_vigencia_em
 from regteia_query.relacoes import PROFUNDIDADE_MAX, TODOS
 
 from . import formatos
@@ -32,7 +34,8 @@ em artigos, com a situação de vigência e as relações entre elas (revoga, al
 Como usar:
 - `buscar` acha os artigos pelo assunto (busca por palavras em português); `panorama` lista as normas em vigor de um
   tema; `norma` mostra uma norma, quem a alterou ou revogou e seus artigos; `dispositivo` devolve o texto de um
-  artigo; `relacoes` percorre as relações a mais de um salto.
+  artigo; `relacoes` percorre as relações a mais de um salto; `vigencia_em` diz se uma norma ou artigo valia numa
+  data (passada ou futura) e se o texto armazenado é o daquela data.
 - Para citar um artigo, leia-o com `dispositivo` e cite a norma, o artigo e a fonte oficial.
 
 Regras (não negociáveis):
@@ -40,7 +43,8 @@ Regras (não negociáveis):
 - “Alterada” significa que o texto é o consolidado atual do portal. Partes com “a partir de <data futura>” ainda não
   valem: diga isso.
 - Redações anteriores (riscadas no portal) não valem mais; use-as só para explicar o que mudou.
-- Não invente redação histórica: o grafo tem o texto atual e as redações riscadas, não o texto em cada data.
+- Não invente redação histórica: o grafo tem o texto atual e as redações riscadas, não o texto em cada data. Quando
+  `vigencia_em` diz que o texto daquela data é indisponível, diga isso em vez de supor a redação.
 - Leis federais aparecem só como referência, sem texto.
 - Sempre indique a fonte oficial e lembre que o texto é uma conversão automatizada e informativa, que não substitui
   o Diário Oficial nem os portais do BCB e da CVM.
@@ -153,6 +157,22 @@ def create_server(abrir: Callable[[], Leitor] = Leitor.do_ambiente) -> MCPServer
         """Normas em vigor (vigentes ou alteradas) sobre um tema, sem revogadas e sem comunicados: bom ponto de
         partida para "quais normas regem…"."""
         return executar(lambda d: formatos.busca(q_panorama(d, tema, limite=limite)))
+
+    @mcp.tool(annotations=LEITURA)
+    def vigencia_em(
+        ref: Annotated[
+            str,
+            Field(
+                description='Norma ou artigo: "Resolução BCB 520", "Resolução BCB 520, art. 88", '
+                '"bcb:resolucao-bcb:520#art-90-a"'
+            ),
+        ],
+        data: Annotated[date, Field(description="Data no formato AAAA-MM-DD; pode ser futura")],
+    ) -> str:
+        """Se a norma ou o artigo estava (ou estará) em vigor numa data, por quê, e os eventos datados que pesam:
+        revogações, inclusões e novas redações, com a norma que fez cada uma. Para um artigo, diz também se o texto
+        armazenado (redação atual) é o que valia nessa data; se não for, o grafo não tem a redação daquela data."""
+        return executar(lambda d: formatos.vigencia(q_vigencia_em(d, ref, data)))
 
     return mcp
 

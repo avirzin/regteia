@@ -54,7 +54,7 @@ def test_full_load_and_idempotency(env):
     assert ingest(driver, settings, ups, full=True)
     first = snapshot(driver)
     assert first["normas"] == 20
-    assert first["arestas"] == 52 + 4
+    assert first["arestas"] == 57 + 4
     assert first["nao_resolvidos"] == 3
 
     [n520] = q(driver, "MATCH (n:Norma {id: 'bcb:resolucao-bcb:520'}) RETURN n")
@@ -108,12 +108,13 @@ def test_full_load_and_idempotency(env):
         driver,
         "MATCH (:Norma {id: 'bcb:resolucao-bcb:520'})-[:TEM_ATUALIZACAO]->(a) "
         "RETURN a.ordem AS k, a.de AS de, a.resultado AS r, a.ausentes AS aus, a.ausentes_tipo AS t, "
-        "a.ausentes_desde AS ad ORDER BY k",
+        "a.ausentes_desde AS ad, a.ausentes_detalhe AS dt ORDER BY k",
     )
     assert entradas == [
-        {"k": 0, "de": "bcb:resolucao-bcb:589", "r": "dispositivos", "aus": None, "t": None, "ad": None},
+        {"k": 0, "de": "bcb:resolucao-bcb:589", "r": "dispositivos", "aus": None, "t": None, "ad": None,
+         "dt": None},
         {"k": 1, "de": "bcb:resolucao-bcb:589", "r": "parcial", "aus": ["art-90-a", "art-90-b"],
-         "t": ["inclusao", "inclusao"], "ad": ["2027-01-01", "2027-01-01"]},
+         "t": ["inclusao", "inclusao"], "ad": ["2027-01-01", "2027-01-01"], "dt": ["", ""]},
     ]  # fmt: skip
     [rev] = q(
         driver, "MATCH (:Norma {id: 'bcb:circular:1'})-[:TEM_ATUALIZACAO]->(a) RETURN a.resultado AS r, a.motivo AS m"

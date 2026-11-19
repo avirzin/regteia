@@ -14,6 +14,7 @@ from regteia_query import (
     norma,
     panorama,
     relacoes,
+    vigencia_em,
 )
 from regteia_schema.env import AVISO
 
@@ -88,7 +89,7 @@ def test_relacoes_multi_hop(db):
 
 def test_estatisticas(db):
     e = estatisticas(db)
-    assert e.normas == 20 and e.arestas == 56 and e.nao_resolvidos == 3
+    assert e.normas == 20 and e.arestas == 61 and e.nao_resolvidos == 3
     assert sum(e.por_estado.values()) == 20
     assert sum(s.total for s in e.por_serie) == 20
     assert {i.fonte for i in e.ingestoes} == {"normas-bcb", "normas-cvm"}
@@ -167,3 +168,57 @@ def test_estatisticas_dispositivos(db):
     assert e.dispositivos == sum(e.dispositivos_por_tipo.values()) > 100
     assert e.normas_por_divisao["vazio"] == 1 and e.normas_por_divisao["artigos"] >= 10
     assert e.dispositivos_com_redacao_anterior >= 1
+
+
+HOJE = date(2026, 11, 18)
+
+
+def test_vigencia_em_article_whose_stored_text_is_later_wording(db):
+    # Res. BCB 589 gives art. 88 new wording from 2027-01-01: before that the stored text is not that date's
+    antes = vigencia_em(db, "bcb:resolucao-bcb:520#art-88", date(2026, 12, 31), hoje=HOJE)
+    assert (antes.situacao, antes.texto_na_data, antes.texto) == ("vigente", "desconhecido", None)
+    assert [(e.tipo, e.alcance, e.data, e.origem_data, e.aplicado) for e in antes.eventos] == [
+        ("nova_redacao", "parte", date(2027, 1, 1), "a_partir_de", False)
+    ]
+    assert antes.eventos[0].por.id == "bcb:resolucao-bcb:589" and antes.eventos[0].entrada.startswith("Resolução BCB")
+    assert "não guarda a redação" in antes.notas[0]
+    depois = vigencia_em(db, "Resolução BCB 520, art. 88", date(2027, 1, 2), hoje=HOJE)
+    assert (depois.situacao, depois.texto_na_data) == ("vigente", "armazenado")
+    assert depois.texto.startswith("Art. 88") and depois.eventos[0].aplicado
+    assert depois.aviso == AVISO and depois.norma.fonte_url.startswith("https://www.bcb.gov.br/")
+
+
+def test_vigencia_em_article_missing_from_the_portal_text(db):
+    # arts. 90-A and 90-B are included from 2027-01-01, and the portal's text doesn't have them yet
+    antes = vigencia_em(db, "bcb:resolucao-bcb:520#art-90-a", date(2026, 12, 31), hoje=HOJE)
+    assert (antes.situacao, antes.dispositivo, antes.chave) == ("nao_vigente", None, "art-90-a")
+    assert "01/01/2027" in antes.motivo and "Resolução BCB" in antes.motivo
+    depois = vigencia_em(db, "Resolução BCB 520, art. 90-A", date(2027, 1, 2), hoje=HOJE)
+    assert (depois.situacao, depois.texto_na_data, depois.texto) == ("vigente", "sem_texto", None)
+    [e] = depois.eventos
+    assert (e.tipo, e.rotulo, e.no_texto, e.aplicado) == ("inclusao", "Art. 90-A", False, True)
+    assert any("ainda não o traz" in n for n in depois.notas)
+    with pytest.raises(DispositivoNaoEncontrado):
+        vigencia_em(db, "Resolução BCB 520, art. 95", date(2027, 1, 2), hoje=HOJE)
+
+
+def test_vigencia_em_whole_norm(db):
+    r = vigencia_em(db, "Resolução BCB 520", date(2027, 1, 2), hoje=HOJE)
+    assert r.situacao == "vigente" and r.texto_na_data is None
+    assert [e.rotulo for e in r.eventos] == ["Art. 91", "Art. 88", "Art. 90-A", "Art. 90-B"]
+    assert vigencia_em(db, "Resolução BCB 589", date(2026, 1, 1), hoje=HOJE).situacao == "nao_vigente"
+
+
+def test_vigencia_em_revoked_norm(db):
+    # Circular 1 (1965) revoked by Circular 58 from 1967-01-01, and again by Res. CMN 469 in 1978
+    assert vigencia_em(db, "Circular 1", date(1966, 6, 1), hoje=HOJE).situacao == "vigente"
+    r = vigencia_em(db, "Circular 1", date(1967, 1, 2), hoje=HOJE)
+    assert r.situacao == "revogada" and "01/01/1967" in r.motivo
+    assert [e.data for e in r.eventos] == [date(1967, 1, 1), date(1978, 6, 1)]
+    assert vigencia_em(db, "Circular 1", HOJE, hoje=HOJE).situacao == "revogada"
+    # Carta Circular 1: one of its revocations (Circular 3081, outside the fixtures) has no date
+    duvida = vigencia_em(db, "bcb:carta-circular:1", date(1970, 1, 1), hoje=HOJE)
+    assert duvida.situacao == "indeterminada" and "pode ser anterior" in duvida.motivo
+    assert vigencia_em(db, "bcb:carta-circular:1", date(1980, 1, 1), hoje=HOJE).situacao == "revogada"
+    # a federal law stub: no history, never a guess
+    assert vigencia_em(db, "Lei nº 4.595/1964", HOJE, hoje=HOJE).situacao == "indeterminada"

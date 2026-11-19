@@ -3,14 +3,25 @@
 import argparse
 import sys
 from collections.abc import Callable
+from datetime import date
 
 from pydantic import BaseModel
 
 from .db import Leitor
 from .estatisticas import estatisticas
-from .modelos import DispositivoDetalhe, Estatisticas, NormaDetalhe, NormaResumo, ResultadoBusca, Subgrafo
+from .modelos import (
+    DispositivoDetalhe,
+    Estatisticas,
+    EventoVigencia,
+    NormaDetalhe,
+    NormaResumo,
+    ResultadoBusca,
+    Subgrafo,
+    Vigencia,
+)
 from .normas import NormaNaoEncontrada, buscar, dispositivo, norma, panorama
 from .relacoes import PROFUNDIDADE_MAX, TODOS, relacoes
+from .vigencia import vigencia_em
 
 ROTULO_RELACAO = {
     ("saida", "REVOGA"): "Revoga",
@@ -151,6 +162,44 @@ def fmt_estatisticas(r: Estatisticas) -> str:
     return "\n".join(out)
 
 
+SITUACAO_VIGENCIA = {
+    "vigente": "EM VIGOR",
+    "revogada": "REVOGADA",
+    "nao_vigente": "AINDA NÃO VIGENTE",
+    "indeterminada": "INDETERMINADA",
+}
+TIPO_EVENTO = {"revogacao": "revogação", "nova_redacao": "nova redação", "inclusao": "inclusão"}
+
+
+def fmt_evento(e: EventoVigencia) -> str:
+    quando = f"{e.data:%d/%m/%Y}" if e.data else "sem data"
+    if e.origem_data == "data_da_norma":
+        quando += " (data da norma)"
+    marca = {True: "x", False: " ", None: "?"}[e.aplicado]
+    alvo = "a norma" if e.alcance == "norma" else (e.rotulo or e.dispositivo or "")
+    if e.detalhe:
+        alvo += f", {e.detalhe}"
+    if not e.no_texto:
+        alvo += " [fora do texto publicado]"
+    por = e.por.rotulo if e.por else "?"
+    return f"  [{marca}] {quando:<24} {TIPO_EVENTO[e.tipo]}: {alvo} — {por}"
+
+
+def fmt_vigencia(r: Vigencia) -> str:
+    alvo = r.norma.rotulo
+    if r.chave:
+        alvo += f", {r.rotulo}"
+    out = [f"[{SITUACAO_VIGENCIA[r.situacao]} em {r.data:%d/%m/%Y}] {alvo}", f"  {r.motivo}", *_links(r.norma)]
+    out.append(f"  Situação hoje: {r.norma.situacao_detalhada}")
+    out += [f"  ! {nota}" for nota in r.notas]
+    if r.eventos:
+        out.append("\nEventos ([x] já valiam na data, [ ] posteriores, [?] sem data):")
+        out += [fmt_evento(e) for e in r.eventos]
+    if r.texto_na_data == "armazenado" and r.texto:
+        out += ["", "Texto (a redação armazenada é a dessa data):", r.texto]
+    return "\n".join(out)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="regteia", description=__doc__)
     p.add_argument("--json", action="store_true", help="print the result as JSON")
@@ -183,14 +232,11 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("estatisticas", help="corpus coverage and health")
 
-    sp = sub.add_parser("vigencia", help="in force on a date (roadmap step 7)")
-    sp.add_argument("ref")
-    sp.add_argument("data")
+    sp = sub.add_parser("vigencia", help="was a norm or article in force on a date, and is its text that date's")
+    sp.add_argument("ref", help='e.g. "bcb:resolucao-bcb:520#art-88", "Resolução BCB 520, art. 90-A"')
+    sp.add_argument("data", type=date.fromisoformat, help="YYYY-MM-DD")
 
     args = p.parse_args(argv)
-    if args.cmd == "vigencia":
-        print("vigencia_em ainda não existe: chega com o parser de atualizações (roadmap, passo 7).", file=sys.stderr)
-        return 2
 
     calls: dict[str, tuple[Callable[[Leitor], BaseModel], Callable]] = {
         "norma": (lambda db: norma(db, args.ref, limite=args.limite), fmt_norma),
@@ -219,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
             fmt_subgrafo,
         ),
         "estatisticas": (estatisticas, fmt_estatisticas),
+        "vigencia": (lambda db: vigencia_em(db, args.ref, args.data), fmt_vigencia),
     }
     run, fmt = calls[args.cmd]
     try:

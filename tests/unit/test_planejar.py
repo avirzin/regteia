@@ -12,7 +12,7 @@ BCB = Upstream(name="normas-bcb", url="x", ref="main", adapter="normas_grafo", a
 def test_full_plan_from_fixtures():
     p = planejar(FIXTURES / "normas-bcb", BCB, "abc", None)
     assert p.full and len(p.normas) == 14 == len(p.estados)
-    assert len(p.arestas) == 52 and len(p.nao_resolvidos) == 2
+    assert len(p.arestas) == 57 and len(p.nao_resolvidos) == 2
     n520 = next(n for n in p.normas if n.id == "bcb:resolucao-bcb:520")
     assert n520.estado == "alterada"
     assert n520.fonte_url.startswith("https://www.bcb.gov.br/")
@@ -26,7 +26,7 @@ def test_incremental_plan_only_reads_changed_norms():
     assert [n.id for n in p.normas] == ["bcb:resolucao-bcb:520"]
     assert p.arestas is None and p.estados is None  # grafo/ untouched
     p = planejar(FIXTURES / "normas-bcb", BCB, "def", [Change("M", "grafo/arestas.jsonl")])
-    assert p.normas == [] and len(p.arestas) == 52
+    assert p.normas == [] and len(p.arestas) == 57
 
 
 def test_changed_norm_missing_from_estado_fails_loudly():
