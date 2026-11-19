@@ -80,9 +80,26 @@ class DispositivoResumo(BaseModel):
     contexto: str | None = None
 
 
+class CitacaoTexto(BaseModel):
+    """A norm and the Dispositivos whose text cites it (saida: this norm's; entrada: the other norm's)."""
+
+    norma: NormaResumo
+    total: int  # citing Dispositivos
+    dispositivos: list[DispositivoResumo]  # the first few, in reading order
+
+
+class CitacoesTexto(BaseModel):
+    """Citations found in article text (`fonte: texto`), grouped by norm."""
+
+    direcao: Direcao  # saida: norms this norm's text cites; entrada: norms whose text cites this one
+    total: int  # distinct norms
+    itens: list[CitacaoTexto]  # most citing Dispositivos first, capped
+
+
 class NormaDetalhe(BaseModel):
     norma: NormaResumo
     relacoes: list[GrupoRelacoes]
+    citacoes_texto: list[CitacoesTexto] = Field(default_factory=list)
     notas: list[str]  # caveats the reader must see (revoked, consolidated text, OCR, future amendments...)
     divisao: str | None = None  # artigos | itens | texto | vazio; None for norms outside the corpus
     sumario: list[DispositivoResumo] = Field(default_factory=list)  # the norm's Dispositivos, in order
@@ -96,6 +113,7 @@ class DispositivoDetalhe(BaseModel):
     redacoes_anteriores: list[str] = Field(default_factory=list)  # superseded wording, struck through upstream
     anterior: DispositivoResumo | None = None
     proximo: DispositivoResumo | None = None
+    cita: list[NormaResumo] = Field(default_factory=list)  # norms its text cites, in order of first mention
     notas: list[str]
     aviso: str = AVISO
 
@@ -192,6 +210,7 @@ class VigenciaNorma(BaseModel):
 class DispositivoTexto(DispositivoResumo):
     texto: str  # latest published wording
     redacoes_anteriores: list[str] = Field(default_factory=list)
+    cita: list[NormaResumo] = Field(default_factory=list)  # norms its text cites, in order of first mention
 
 
 class TextoNorma(BaseModel):
@@ -311,6 +330,35 @@ class FalhaAtualizacao(BaseModel):
     motivo: str | None = None
 
 
+CategoriaNaoResolvido = Literal["lei_federal", "outro_orgao", "acervo", "manual", "constituicao", "voto", "outro"]
+
+
+class NaoResolvidoCategoria(BaseModel):
+    """Upstream's unresolved references of one kind (see `nao_resolvidos.categoria`)."""
+
+    categoria: CategoriaNaoResolvido
+    n: int  # references (an ID or a pattern)
+    ocorrencias: int  # edges pointing at the IDs, or occurrences of the patterns
+    exemplos: list[str]  # the most frequent
+
+
+class NaoResolvidoAcervo(BaseModel):
+    """A BCB or CVM ID upstream parsed but no norm has: a typo upstream or a norm missing from the corpus."""
+
+    id: str
+    em: str  # where the reference appears
+    titulo: str | None = None  # of `em`
+    campo: str
+
+
+class CitacaoPendente(BaseModel):
+    """A BCB or CVM norm cited in article text that the graph doesn't have."""
+
+    id: str
+    dispositivos: int
+    exemplo: str  # a citing Dispositivo
+
+
 class Estatisticas(BaseModel):
     normas: int  # file-backed
     stubs: int  # edge endpoints outside our corpora
@@ -342,5 +390,14 @@ class Estatisticas(BaseModel):
     alteracoes_com_data: int  # with an explicit "a partir de"
     alteracoes_futuras: int  # starting after today
     atualizacoes_falhas: list[FalhaAtualizacao]  # the report (capped)
+    nao_resolvidos_por_categoria: list[NaoResolvidoCategoria]
+    nao_resolvidos_acervo: list[NaoResolvidoAcervo]  # all of them: there are few
+    citacoes_texto: int  # Dispositivo -> norm CITA edges read from article text
+    citacoes_texto_por_alvo: dict[str, int]  # acervo | lei_federal | outro_orgao | fora_do_acervo -> edges
+    citacoes_texto_dispositivos: int  # Dispositivos citing at least one norm
+    citacoes_texto_pares: int  # distinct (citing norm, cited norm) pairs
+    citacoes_texto_pares_novos: int  # ... with no norm-level edge between them
+    citacoes_pendentes: int  # citations of a BCB/CVM ID that matches no norm
+    citacoes_pendentes_lista: list[CitacaoPendente]  # most cited first (capped)
     ingestoes: list[Ingestao]
     aviso: str = AVISO

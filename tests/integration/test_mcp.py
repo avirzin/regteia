@@ -63,14 +63,21 @@ def test_buscar_returns_articles_with_status_source_and_synonyms(server):
 
 
 def test_norma_dispositivo_relacoes_panorama(server):
-    _, [n, d, r, p] = _chamar(
+    _, [n, d, d3, r, p] = _chamar(
         server,
         ("norma", {"ref": "Resolução BCB 520"}),
         ("dispositivo", {"ref": "Resolução BCB 520, art. 91"}),
+        ("dispositivo", {"ref": "Resolução BCB 520, art. 3"}),
         ("relacoes", {"ref": "Resolução BCB 589", "direcao": "saida", "tipos": ["ALTERA"]}),
         ("panorama", {"tema": "ativos virtuais", "limite": 5}),
     )
     assert "Alterada por (1)" in n and "Dispositivos (94; divisão: artigos)" in n
+    # citations read from article text: INs BCB cite Res. BCB 520; its art. 3 cites Lei 14.478. Art. 91 names Res.
+    # BCB 589 only in the portal's note on who amended it, which is not a citation
+    assert "Citada no texto de" in n and "`bcb:instrucao-normativa-bcb:701`: 6 dispositivo(s)" in n
+    assert "Cita no texto" in n and "`lei:14478-2022`" in n
+    assert "**Normas citadas neste texto**: Lei nº 14.478/2022" in d3
+    assert "Normas citadas neste texto" not in d
     assert "Art. 91" in d and "Redação anterior 1" in d and "não vale mais" in d
     assert "6 de novembro de 2026" in d and d.rstrip().endswith(AVISO)
     assert "Resolução BCB N° 520" in r and "ALTERA" in r

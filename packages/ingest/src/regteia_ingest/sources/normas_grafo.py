@@ -22,7 +22,7 @@ from regteia_schema import (
 )
 
 from ..config import Upstream
-from ..parse import atualizacoes
+from ..parse import atualizacoes, citacoes_texto
 from ..parse.dispositivos import Divisao, dividir
 from ..parse.frontmatter import FrontmatterError, read_frontmatter, read_norma
 from .git import Change
@@ -42,11 +42,12 @@ class UpstreamValidationError(RuntimeError):
 
 @dataclass(frozen=True)
 class Texto:
-    """One norm's split and its `atualizacoes` read against it."""
+    """One norm's split, its `atualizacoes` read against it, and the norms each Dispositivo's text cites."""
 
     norma: str
     divisao: Divisao
     atualizacoes: list[atualizacoes.Leitura]
+    citacoes: dict[str, list[str]]  # Dispositivo id -> cited norm IDs (only Dispositivos that cite something)
 
 
 @dataclass
@@ -66,9 +67,9 @@ class Plano:
     root: Path | None = None  # the checkout, for reading bodies when writing
 
     def textos(self) -> Iterator[Texto]:
-        """Each planned norm split into Dispositivos, with its `atualizacoes` read against that split. Lazy, so a full
-        load never holds every text at once. Neither step can fail (no input is invalid, only less structured: an
-        entry we can't read is reported as such); the files were validated by planejar."""
+        """Each planned norm split into Dispositivos, with its `atualizacoes` read against that split and the norms its
+        text cites. Lazy, so a full load never holds every text at once. No step can fail (no input is invalid, only
+        less structured: an entry we can't read is reported as such); the files were validated by planejar."""
         assert self.root is not None
         for n in self.normas:
             fm, corpo = read_norma(self.root / n.caminho)
@@ -76,7 +77,8 @@ class Plano:
             chaves = {x.id.split("#", 1)[1] for x in d.dispositivos}
             entradas = fm.get("atualizacoes") or []
             leituras = [atualizacoes.ligar(atualizacoes.ler(str(e), n.id, n.acervo), chaves) for e in entradas]
-            yield Texto(n.id, d, leituras)
+            citadas = {x.id: c for x in d.dispositivos if (c := citacoes_texto.citacoes(x.texto, n.id, n.acervo))}
+            yield Texto(n.id, d, leituras, citadas)
 
 
 def is_norm_path(path: str) -> bool:

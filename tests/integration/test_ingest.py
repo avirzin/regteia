@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 from neo4j import GraphDatabase
 from regteia_ingest.config import Settings, Upstream
+from regteia_ingest.load import writer
 from regteia_ingest.migrate import migrate
-from regteia_ingest.parse import atualizacoes, dispositivos
+from regteia_ingest.parse import atualizacoes, citacoes_texto, dispositivos
 from regteia_ingest.run import ingest
 
 from tests.conftest import commit_all
@@ -46,6 +47,8 @@ def snapshot(driver):
         "soltos": q(driver, "MATCH (d:Dispositivo) WHERE NOT ()-[:TEM_DISPOSITIVO]->(d) RETURN count(d) AS c")[0]["c"],
         "atualizacoes": q(driver, "MATCH (:Norma)-[:TEM_ATUALIZACAO]->(a) RETURN count(a) AS c")[0]["c"],
         "alteram": q(driver, "MATCH (:Norma)-[r:ALTERA]->(:Dispositivo) RETURN count(r) AS c")[0]["c"],
+        "citacoes": q(driver, "MATCH (:Dispositivo)-[r:CITA {fonte: 'texto'}]->() RETURN count(r) AS c")[0]["c"],
+        "pendentes": q(driver, "MATCH (d:Dispositivo) RETURN sum(size(coalesce(d.cita_sem_alvo, []))) AS c")[0]["c"],
     }
 
 
@@ -120,8 +123,36 @@ def test_full_load_and_idempotency(env):
         driver, "MATCH (:Norma {id: 'bcb:circular:1'})-[:TEM_ATUALIZACAO]->(a) RETURN a.resultado AS r, a.motivo AS m"
     )
     assert rev == {"r": "norma", "m": "revogação total"}
-    [ing] = q(driver, "MATCH (i:Ingestao {fonte: 'normas-bcb'}) RETURN i.atualizacoes AS v")
-    assert ing["v"] == atualizacoes.VERSAO
+    [ing] = q(driver, "MATCH (i:Ingestao {fonte: 'normas-bcb'}) RETURN i.atualizacoes AS v, i.citacoes AS c")
+    assert (ing["v"], ing["c"]) == (atualizacoes.VERSAO, citacoes_texto.VERSAO)
+
+    # citations in the text: IN BCB 712 art. 1 cites INs BCB 330 and 701 and Res. BCB 520; a federal law gets a stub
+    citadas = q(
+        driver,
+        "MATCH (:Dispositivo {id: 'bcb:instrucao-normativa-bcb:712#art-1'})-[r:CITA]->(n) "
+        "RETURN n.id AS id, r.fonte AS fonte ORDER BY id",
+    )
+    assert citadas == [
+        {"id": "bcb:instrucao-normativa-bcb:330", "fonte": "texto"},
+        {"id": "bcb:instrucao-normativa-bcb:701", "fonte": "texto"},
+        {"id": "bcb:resolucao-bcb:520", "fonte": "texto"},
+    ]
+    [lei] = q(
+        driver,
+        "MATCH (:Dispositivo {id: 'bcb:resolucao-bcb:520#preambulo'})-[:CITA]->(n:Norma {id: 'lei:4595-1964'}) "
+        "RETURN n.externo AS externo",
+    )
+    assert lei["externo"] is True
+    # the portal's heading "Resolução Nº 589" is Res. BCB 589 itself, not Res. CMN 589
+    assert not q(driver, "MATCH (n:Norma {id: 'bcb:resolucao-cmn:589'}) RETURN n")
+    # a BCB/CVM norm not in the graph gets no node: the citation waits on the Dispositivo
+    assert not q(driver, "MATCH (n:Norma {id: 'bcb:resolucao-cmn:454'}) RETURN n")
+    [espera] = q(
+        driver,
+        "MATCH (d:Dispositivo) WHERE 'bcb:resolucao-cmn:454' IN d.cita_sem_alvo RETURN d.id AS id",
+    )
+    assert espera["id"] == "cvm:oficio-circular-anual:2022-2022#texto"
+    assert first["citacoes"] > 100 and first["pendentes"] > 0
 
     # the same data again: nothing duplicated, and incremental at the same SHA is a no-op
     assert ingest(driver, settings, ups, full=True)
@@ -135,6 +166,11 @@ def test_incremental_applies_upstream_changes(env):
     assert ingest(driver, settings, ups, full=True)
     before = snapshot(driver)
     bcb = remotes["normas-bcb"]
+    [cita712] = q(
+        driver,
+        "MATCH (:Norma {id: 'bcb:instrucao-normativa-bcb:712'})-[:TEM_DISPOSITIVO]->()-[r:CITA {fonte: 'texto'}]->() "
+        "RETURN count(r) AS c",
+    )
 
     # upstream commit: Res. BCB 520 gets revoked, one of its edges disappears, Carta Circular 3365 and IN BCB 712
     # are deleted, and the text of Res. BCB 520 changes: art. 1 is reworded and art. 92 loses its heading
@@ -174,6 +210,9 @@ def test_incremental_applies_upstream_changes(env):
     # Res. BCB 520 was re-read: its entries and article-level edges are replaced, not duplicated (the deleted
     # Carta Circular 3365 and IN 712 have no atualizacoes)
     assert (after["atualizacoes"], after["alteram"]) == (before["atualizacoes"], before["alteram"])
+    # and its citations too; IN 712's citations go with its Dispositivos
+    assert cita712["c"] > 0
+    assert after["citacoes"] == before["citacoes"] - cita712["c"]
     assert not q(
         driver,
         "MATCH (:Norma {id: $de})-[r]->(:Norma {id: $para}) WHERE type(r) = toUpper($rel) RETURN r.fonte",
@@ -183,7 +222,30 @@ def test_incremental_applies_upstream_changes(env):
     assert ing == {"sha": new_sha, "modo": "incremental"}
 
 
-@pytest.mark.parametrize("campo, versao", [("divisao", dispositivos.VERSAO), ("atualizacoes", atualizacoes.VERSAO)])
+def test_waiting_citation_is_linked_when_its_norm_appears(env):
+    driver, settings, ups, _ = env
+    assert ingest(driver, settings, ups, full=True)
+    before = snapshot(driver)
+    # as if Res. CMN 454 had been loaded since (by the other upstream, or upstream added it)
+    driver.execute_query("CREATE (:Norma {id: 'bcb:resolucao-cmn:454', externo: false, acervo: 'bcb'})")
+    assert writer._write(driver, "citacoes_pendentes") >= 1
+    after = snapshot(driver)
+    assert (after["citacoes"], after["pendentes"]) == (before["citacoes"] + 1, before["pendentes"] - 1)
+    assert q(
+        driver,
+        "MATCH (d:Dispositivo)-[:CITA {fonte: 'texto'}]->(:Norma {id: 'bcb:resolucao-cmn:454'}) RETURN d.id AS id",
+    ) == [{"id": "cvm:oficio-circular-anual:2022-2022#texto"}]
+    assert not q(driver, "MATCH (d:Dispositivo) WHERE 'bcb:resolucao-cmn:454' IN d.cita_sem_alvo RETURN d")
+
+
+@pytest.mark.parametrize(
+    "campo, versao",
+    [
+        ("divisao", dispositivos.VERSAO),
+        ("atualizacoes", atualizacoes.VERSAO),
+        ("citacoes", citacoes_texto.VERSAO),
+    ],
+)
 def test_new_parser_version_forces_full_reload(env, campo, versao):
     driver, settings, ups, _ = env
     assert ingest(driver, settings, ups, full=True)

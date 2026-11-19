@@ -34,12 +34,12 @@ REF_TITULO = NUM + r"(?: ?/+ ?(\d{4}|\d{2}))?(?![\d/])"  # the year may be missi
 DATA = re.compile(r"\b(\d{1,2})o?[/.](\d{1,2})[/.](\d{4}|\d{2})\b")
 
 
-def _citacao(ref: str) -> re.Pattern[str]:
-    """type + optional issuer ('BCB', 'BACEN/CVM') + optional 'nº'/'ns.' + a list of numbers."""
+def _citacao(ref: str, sep: str = r"(?:[ ,;]| e )+") -> re.Pattern[str]:
+    """type + optional issuer ('BCB', 'BACEN/CVM') + optional 'nº'/'ns.' + a list of numbers joined by `sep`."""
     ref = re.sub(r"\((?!\?)", "(?:", ref)
     return re.compile(
         r"\b(?P<tipo>" + "|".join(p for p, _ in TIPOS) + r")\b(?P<orgao>(?: (?:d[aeo] )?[a-z]{2,8}){0,4}?)"
-        r" ?(?:n(?:os?|s)?\b\.? ?)?(?P<refs>" + ref + r"(?:(?:[ ,;]| e )+" + ref + r")*)"
+        r" ?(?:n(?:os?|s)?\b\.? ?)?(?P<refs>" + ref + r"(?:" + sep + ref + r")*)"
     )
 
 

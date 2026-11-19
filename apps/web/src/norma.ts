@@ -4,7 +4,7 @@
 // Status on a date comes from GET /api/vigencia/dispositivos (query.vigencia_dispositivos): the page never decides
 // it. When the stored text is later wording than the chosen date, it says so and keeps that text folded away: the
 // graph doesn't have the wording of that date and the page never presents the current one as it.
-import { api, ErroApi, type DispositivoTexto, type EventoVigencia, type NormaDetalhe, type Situacao, type Subgrafo, type TextoNorma, type VigenciaDispositivo, type VigenciaNorma } from './api'
+import { api, ErroApi, type CitacoesTexto, type DispositivoTexto, type EventoVigencia, type NormaDetalhe, type NormaResumo, type Situacao, type Subgrafo, type TextoNorma, type VigenciaDispositivo, type VigenciaNorma } from './api'
 import { el, esconderDica, mostrarDica } from './charts'
 import { fmt, fmtData, idioma, t, tDinamico } from './i18n'
 
@@ -76,7 +76,45 @@ function cabecalho(d: NormaDetalhe): HTMLElement {
     if (g.total > g.itens.length) p.append(document.createTextNode(` ${t('visao.eMais', { n: fmt.format(g.total - g.itens.length) })}`))
     cab.append(p)
   }
+  for (const c of [...d.citacoes_texto].sort((a, b) => (a.direcao === 'entrada' ? -1 : 1) - (b.direcao === 'entrada' ? -1 : 1))) {
+    cab.append(citacoes(c))
+  }
   return cab
+}
+
+/** Norms cited in this norm's articles (saida), or norms whose articles cite it (entrada), from the text. */
+function citacoes(c: CitacoesTexto): HTMLElement {
+  const det = el('details', { class: 'citacoes' })
+  const titulo = c.direcao === 'entrada' ? t('norma.citadaNoTexto') : t('norma.citaNoTexto')
+  det.append(el('summary', {}, `${titulo} (${t('norma.citacoesResumo', { n: fmt.format(c.total) })})`))
+  const ul = el('ul')
+  for (const x of c.itens) {
+    const li = el('li')
+    li.append(linkCitada(x.norma))
+    const onde = x.dispositivos.map((d) => d.rotulo).join(', ') + (x.total > x.dispositivos.length ? ', …' : '')
+    li.append(el('span', { class: 'onde' }, ` · ${t('norma.dispositivosQueCitam', { n: fmt.format(x.total) })}: ${onde}`))
+    ul.append(li)
+  }
+  if (c.total > c.itens.length) ul.append(el('li', { class: 'nota' }, t('visao.eMais', { n: fmt.format(c.total - c.itens.length) })))
+  det.append(ul, el('p', { class: 'nota' }, t('norma.citacoesNota')))
+  return det
+}
+
+function linkCitada(n: NormaResumo): HTMLElement {
+  const a = el('a', { href: linkNorma(n.id), class: `citada ${n.externo ? 'externa' : (n.estado ?? '')}`, title: n.id }, n.titulo ?? n.id)
+  if (n.estado === 'revogada') a.title = `${n.id} · ${estadoRotulo('revogada')}`
+  return a
+}
+
+function cita(d: DispositivoTexto): HTMLElement | null {
+  if (!d.cita?.length) return null
+  const p = el('p', { class: 'cita' })
+  p.append(el('span', { class: 'rotulo' }, t('norma.cita')))
+  d.cita.forEach((n, i) => {
+    p.append(document.createTextNode(i ? ', ' : ' '))
+    p.append(linkCitada(n))
+  })
+  return p
 }
 
 // ---------------------------------------------------------------- text by article
@@ -126,6 +164,8 @@ function artigo(v: VigenciaDispositivo, d: DispositivoTexto | undefined, data: s
     a.append(el('p', { class: 'motivo' }, v.motivo))
     a.append(dobrado(t('norma.verTextoArmazenado'), d.texto))
   }
+  const c = cita(d)
+  if (c) a.append(c)
   const ant = anteriores(d)
   if (ant) a.append(ant)
   return a

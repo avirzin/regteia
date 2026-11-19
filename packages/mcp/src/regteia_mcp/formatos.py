@@ -19,6 +19,7 @@ TEXTO_MAX = 20_000  # characters of one Dispositivo in `dispositivo`
 ANTERIOR_MAX = 3_000  # characters of each superseded wording
 RESPOSTA_MAX = 40_000  # characters of a whole `buscar` answer
 
+CITACAO_TEXTO = {"saida": "Cita no texto", "entrada": "Citada no texto de"}
 RELACAO = {
     ("saida", "REVOGA"): "Revoga",
     ("saida", "REVOGA_PARCIAL"): "Revoga em parte",
@@ -108,6 +109,15 @@ def norma(r: NormaDetalhe) -> str:
         if g.total > len(g.itens):
             linhas.append(f"- … e mais {g.total - len(g.itens)} (use `relacoes`)")
         partes.append("\n".join(linhas))
+    for c in r.citacoes_texto:
+        titulo = CITACAO_TEXTO[c.direcao]
+        linhas = [f"**{titulo} ({c.total} norma(s); lido do texto dos artigos)**"]
+        for x in c.itens:
+            onde = ", ".join(d.rotulo for d in x.dispositivos) + (" …" if x.total > len(x.dispositivos) else "")
+            linhas.append(f"- {_nome(x.norma)} ({x.norma.situacao}) `{x.norma.id}`: {x.total} dispositivo(s) ({onde})")
+        if c.total > len(c.itens):
+            linhas.append(f"- … e mais {c.total - len(c.itens)}")
+        partes.append("\n".join(linhas))
     if r.sumario:
         exemplo = r.sumario[min(1, len(r.sumario) - 1)]
         rotulos = [d.rotulo + (" [revogado]" if d.revogado else "") for d in r.sumario]
@@ -132,6 +142,9 @@ def dispositivo(r: DispositivoDetalhe) -> str:
     partes.append(_cortar(r.texto, TEXTO_MAX) if r.texto else "(sem texto: o dispositivo foi revogado)")
     for k, ant in enumerate(r.redacoes_anteriores, 1):
         partes.append(f"**Redação anterior {k}** (riscada no portal; não vale mais):\n{_cortar(ant, ANTERIOR_MAX)}")
+    if r.cita:
+        citadas = "; ".join(f"{_nome(c)} ({c.situacao}) `{c.id}`" for c in r.cita)
+        partes.append(f"**Normas citadas neste texto**: {citadas}")
     nav = [f"anterior: {r.anterior.rotulo} (`{r.anterior.id}`)" if r.anterior else ""]
     nav.append(f"próximo: {r.proximo.rotulo} (`{r.proximo.id}`)" if r.proximo else "")
     if any(nav):

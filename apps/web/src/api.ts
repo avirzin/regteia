@@ -38,9 +38,16 @@ export interface DispositivoResumo {
   contexto: string | null
 }
 
+export interface CitacoesTexto {
+  direcao: 'saida' | 'entrada'
+  total: number
+  itens: { norma: NormaResumo; total: number; dispositivos: DispositivoResumo[] }[]
+}
+
 export interface NormaDetalhe {
   norma: NormaResumo
   relacoes: GrupoRelacoes[]
+  citacoes_texto: CitacoesTexto[]
   notas: string[]
   divisao: string | null
   sumario: DispositivoResumo[]
@@ -94,6 +101,7 @@ export interface VigenciaNorma {
 export interface DispositivoTexto extends DispositivoResumo {
   texto: string
   redacoes_anteriores: string[]
+  cita: NormaResumo[]
 }
 
 export interface TextoNorma {
@@ -139,6 +147,15 @@ export interface Estatisticas {
   alteracoes_com_data: number
   alteracoes_futuras: number
   atualizacoes_falhas: { norma: string; titulo: string | null; texto: string; resultado: string; motivo: string | null }[]
+  nao_resolvidos_por_categoria: { categoria: string; n: number; ocorrencias: number; exemplos: string[] }[]
+  nao_resolvidos_acervo: { id: string; em: string; titulo: string | null; campo: string }[]
+  citacoes_texto: number
+  citacoes_texto_por_alvo: Record<string, number>
+  citacoes_texto_dispositivos: number
+  citacoes_texto_pares: number
+  citacoes_texto_pares_novos: number
+  citacoes_pendentes: number
+  citacoes_pendentes_lista: { id: string; dispositivos: number; exemplo: string }[]
   ingestoes: { fonte: string; sha: string | null; em: string | null; arquivos: number | null; modo: string | null }[]
   aviso: string
 }

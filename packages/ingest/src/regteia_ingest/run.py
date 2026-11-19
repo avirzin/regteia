@@ -12,7 +12,6 @@ from neo4j import Driver
 
 from .config import Settings, Upstream
 from .load import writer
-from .parse import atualizacoes, dispositivos
 from .sources import git, normas_grafo
 
 log = logging.getLogger(__name__)
@@ -45,17 +44,17 @@ def ingest_upstream(driver: Driver, settings: Settings, up: Upstream, *, full: b
     t0 = time.monotonic()
     git.ensure_clone(up, dest)
     new_sha = git.update(dest, up.ref)
-    old_sha, divisao, leitura = writer.ultima(driver, up.name)
+    old_sha, carregadas = writer.ultima(driver, up.name)
+    atuais = writer.versoes()
 
     changes = None
-    if not full and old_sha is not None and (divisao, leitura) != (dispositivos.VERSAO, atualizacoes.VERSAO):
+    if not full and old_sha is not None and carregadas != atuais:
         log.info(
-            "%s: loaded with splitter v%s and atualizacoes parser v%s, current are v%s and v%s: full reload",
+            "%s: loaded with splitter, atualizacoes parser and citation extractor versions %s, current are %s: "
+            "full reload",
             up.name,
-            divisao,
-            leitura,
-            dispositivos.VERSAO,
-            atualizacoes.VERSAO,
+            carregadas,
+            atuais,
         )
     elif not full and old_sha is not None:
         if old_sha == new_sha:

@@ -33,9 +33,12 @@ em artigos, com a situação de vigência e as relações entre elas (revoga, al
 
 Como usar:
 - `buscar` acha os artigos pelo assunto (busca por palavras em português); `panorama` lista as normas em vigor de um
-  tema; `norma` mostra uma norma, quem a alterou ou revogou e seus artigos; `dispositivo` devolve o texto de um
-  artigo; `relacoes` percorre as relações a mais de um salto; `vigencia_em` diz se uma norma ou artigo valia numa
-  data (passada ou futura) e se o texto armazenado é o daquela data.
+  tema; `norma` mostra uma norma, quem a alterou ou revogou, as normas citadas no texto dos seus artigos e as normas
+  cujos artigos a citam, e seus artigos; `dispositivo` devolve o texto de um artigo e as normas que ele cita;
+  `relacoes` percorre as relações a mais de um salto; `vigencia_em` diz se uma norma ou artigo valia numa data
+  (passada ou futura) e se o texto armazenado é o daquela data.
+- As citações lidas do texto dos artigos são extraídas por regras: confira no texto do artigo antes de afirmar que
+  ele trata da norma citada.
 - Para citar um artigo, leia-o com `dispositivo` e cite a norma, o artigo e a fonte oficial.
 
 Regras (não negociáveis):
@@ -111,7 +114,8 @@ def create_server(abrir: Callable[[], Leitor] = Leitor.do_ambiente) -> MCPServer
         limite: Annotated[int, Field(ge=1, le=50, description="Itens por tipo de relação")] = 10,
     ) -> str:
         """Uma norma: situação de vigência, fonte oficial, ementa, quem a revogou ou alterou, o que ela revoga, altera,
-        cita e regulamenta, e a lista dos seus dispositivos (artigos, anexos)."""
+        cita e regulamenta, as normas citadas no texto dos seus artigos (e quais artigos de outras normas a citam), e a
+        lista dos seus dispositivos (artigos, anexos)."""
         return executar(lambda d: formatos.norma(q_norma(d, ref, limite=limite)))
 
     @mcp.tool(annotations=LEITURA)
@@ -125,7 +129,7 @@ def create_server(abrir: Callable[[], Leitor] = Leitor.do_ambiente) -> MCPServer
         ],
     ) -> str:
         """O texto de um artigo (ou anexo, item, preâmbulo): redação mais recente publicada, capítulo e seção, se está
-        revogado, redações anteriores riscadas no portal e avisos de vigência futura."""
+        revogado, redações anteriores riscadas no portal, avisos de vigência futura e as normas que o texto cita."""
         return executar(lambda d: formatos.dispositivo(q_dispositivo(d, ref)))
 
     @mcp.tool(annotations=LEITURA)

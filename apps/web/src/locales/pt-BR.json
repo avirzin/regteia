@@ -160,13 +160,24 @@
       }
     },
     "naoResolvidos": {
-      "titulo": "Referências não resolvidas",
-      "sub": "O acervo não conseguiu ligar estas referências a uma norma. “alvo”: identificador sem norma; “padrão”: texto não reconhecido.",
-      "cabecalho": "Origem",
+      "titulo": "Referências não resolvidas do upstream",
+      "sub": "Referências que o upstream não ligou a uma norma, por tipo. Quase nenhuma é um erro nosso a corrigir: são normas de outros órgãos, seções de manuais do BCB ou trechos sem norma. As leis federais passam a ser nós no passo 9.",
+      "cabecalho": "Tipo",
       "valor": "Referências",
-      "ocorrencias": "{n} ocorrências",
-      "alvo": "alvo",
-      "padrao": "padrão"
+      "exemplos": "{n} ocorrências · ex.: {ex}",
+      "listaAcervo": "Identificadores do BCB/CVM sem norma no acervo ({n}): erro de digitação no upstream ou norma ausente",
+      "id": "Identificador",
+      "em": "Onde aparece",
+      "campo": "Campo",
+      "categoria": {
+        "lei_federal": "Lei federal (ainda sem nó)",
+        "outro_orgao": "Norma de outro órgão (fora dos acervos)",
+        "acervo": "Número do BCB/CVM que não existe",
+        "manual": "Seção de manual do BCB (MCR, MNI, CNC…)",
+        "constituicao": "Constituição / ADCT",
+        "voto": "Voto de colegiado",
+        "outro": "Trecho sem norma reconhecível"
+      }
     },
     "atualizacoes": {
       "titulo": "Alterações por artigo",
@@ -232,6 +243,26 @@
         "preambulo": "Preâmbulo",
         "anexo": "Anexo"
       }
+    },
+    "citacoes": {
+      "titulo": "Citações no texto dos artigos",
+      "sub": "Normas citadas no texto de cada dispositivo, lidas por regras (sem IA). Complementam as relações do upstream, que vêm só dos metadados.",
+      "kpiCitacoes": "citações",
+      "kpiDispositivos": "dispositivos que citam",
+      "kpiPares": "pares de normas",
+      "kpiNovos": "pares sem relação no upstream",
+      "kpiPendentes": "citações a normas do BCB/CVM fora do grafo",
+      "listaPendentes": "Normas do BCB/CVM citadas que o grafo não tem (as {n} mais citadas)",
+      "id": "Identificador lido",
+      "dispositivos": "Dispositivos",
+      "exemplo": "Exemplo",
+      "cabecalho": "Norma citada",
+      "alvo": {
+        "acervo": "Norma do acervo (BCB/CVM)",
+        "lei_federal": "Lei federal",
+        "outro_orgao": "Norma de outro órgão",
+        "fora_do_acervo": "BCB/CVM fora do acervo"
+      }
     }
   },
   "norma": {
@@ -277,6 +308,12 @@
     "vizinhancaSub": "Normas ligadas a esta, as mais antigas à esquerda. Clique numa norma para abri-la.",
     "saltos": "Saltos",
     "vizinhancaStatus": "{normas} normas · {relacoes} relações",
-    "vizinhancaTruncada": "{normas} normas · {relacoes} relações (limitado: há mais; filtre os tipos)"
+    "vizinhancaTruncada": "{normas} normas · {relacoes} relações (limitado: há mais; filtre os tipos)",
+    "cita": "Cita:",
+    "citaNoTexto": "Cita no texto dos artigos",
+    "citadaNoTexto": "Citada no texto dos artigos de",
+    "citacoesResumo": "{n} normas",
+    "dispositivosQueCitam": "{n} dispositivo(s)",
+    "citacoesNota": "Lidas do texto por regras: confira o artigo antes de concluir que ele trata da norma citada."
   }
 }

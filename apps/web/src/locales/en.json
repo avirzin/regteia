@@ -160,13 +160,24 @@
       }
     },
     "naoResolvidos": {
-      "titulo": "Unresolved references",
-      "sub": "Upstream could not link these references to a norm. “target”: an ID with no norm; “pattern”: text not recognized.",
-      "cabecalho": "Source",
+      "titulo": "Upstream's unresolved references",
+      "sub": "References upstream could not link to a norm, by kind. Almost none is an error of ours to fix: they are other bodies' norms, sections of the BCB's manuals, or fragments with no norm. Federal laws become nodes in step 9.",
+      "cabecalho": "Kind",
       "valor": "References",
-      "ocorrencias": "occurrences: {n}",
-      "alvo": "target",
-      "padrao": "pattern"
+      "exemplos": "{n} occurrences · e.g. {ex}",
+      "listaAcervo": "BCB/CVM IDs with no norm in the corpus ({n}): a typo upstream or a missing norm",
+      "id": "ID",
+      "em": "Where it appears",
+      "campo": "Field",
+      "categoria": {
+        "lei_federal": "Federal law (no node yet)",
+        "outro_orgao": "Another body's norm (outside the corpora)",
+        "acervo": "BCB/CVM number that doesn't exist",
+        "manual": "Section of a BCB manual (MCR, MNI, CNC…)",
+        "constituicao": "Constitution / ADCT",
+        "voto": "Board vote",
+        "outro": "Fragment with no recognizable norm"
+      }
     },
     "atualizacoes": {
       "titulo": "Amendments by article",
@@ -232,6 +243,26 @@
         "preambulo": "Preamble",
         "anexo": "Annex"
       }
+    },
+    "citacoes": {
+      "titulo": "Citations in article text",
+      "sub": "Norms cited in the text of each provision, read by rules (no AI). They complement upstream's relations, which come from metadata only.",
+      "kpiCitacoes": "citations",
+      "kpiDispositivos": "citing provisions",
+      "kpiPares": "norm pairs",
+      "kpiNovos": "pairs with no upstream relation",
+      "kpiPendentes": "citations of BCB/CVM norms not in the graph",
+      "listaPendentes": "Cited BCB/CVM norms the graph doesn't have (the {n} most cited)",
+      "id": "ID read",
+      "dispositivos": "Provisions",
+      "exemplo": "Example",
+      "cabecalho": "Cited norm",
+      "alvo": {
+        "acervo": "Norm in the corpus (BCB/CVM)",
+        "lei_federal": "Federal law",
+        "outro_orgao": "Another body's norm",
+        "fora_do_acervo": "BCB/CVM outside the corpus"
+      }
     }
   },
   "norma": {
@@ -277,6 +308,12 @@
     "vizinhancaSub": "Norms linked to this one, older ones on the left. Click a norm to open it.",
     "saltos": "Hops",
     "vizinhancaStatus": "{normas} norms · {relacoes} relations",
-    "vizinhancaTruncada": "{normas} norms · {relacoes} relations (capped: there are more; filter the types)"
+    "vizinhancaTruncada": "{normas} norms · {relacoes} relations (capped: there are more; filter the types)",
+    "cita": "Cites:",
+    "citaNoTexto": "Cited in its articles' text",
+    "citadaNoTexto": "Cited in the articles' text of",
+    "citacoesResumo": "{n} norms",
+    "dispositivosQueCitam": "{n} provision(s)",
+    "citacoesNota": "Read from the text by rules: check the article before concluding it is about the cited norm."
   }
 }

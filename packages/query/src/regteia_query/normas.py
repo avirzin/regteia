@@ -5,6 +5,7 @@ from datetime import date
 
 from .db import Leitor
 from .modelos import (
+    CitacoesTexto,
     DispositivoDetalhe,
     DispositivoResumo,
     DispositivoTexto,
@@ -95,18 +96,23 @@ def _notas(n: NormaResumo, grupos: list[GrupoRelacoes], hoje: date) -> list[str]
 
 
 def norma(db: Leitor, ref: str, *, limite: int = 10, hoje: date | None = None) -> NormaDetalhe:
-    """One norm: status, official source, direct relations (both directions) grouped by type, and its Dispositivos
-    (table of contents)."""
+    """One norm: status, official source, direct relations (both directions) grouped by type, the norms cited in its
+    articles' text and those whose articles cite it, and its Dispositivos (table of contents)."""
     ref_norma, chave = separar_dispositivo(ref)
     resumo = resolver(db, ref_norma if chave else ref)
-    rows, sumario = db.ler_varios(
-        [("norma_vizinhos", {"id": resumo.id, "limite": limite}), ("norma_sumario", {"id": resumo.id})]
+    rows, sumario, citacoes = db.ler_varios(
+        [
+            ("norma_vizinhos", {"id": resumo.id, "limite": limite}),
+            ("norma_sumario", {"id": resumo.id}),
+            ("norma_citacoes_texto", {"id": resumo.id, "limite": limite}),
+        ]
     )
     grupos = [GrupoRelacoes.model_validate(r) for r in rows]
     s = sumario[0] if sumario else {"divisao": None, "sumario": []}
     return NormaDetalhe(
         norma=resumo,
         relacoes=grupos,
+        citacoes_texto=[CitacoesTexto.model_validate(r) for r in citacoes],
         notas=_notas(resumo, grupos, hoje or date.today()),
         divisao=s["divisao"],
         sumario=[DispositivoResumo.model_validate(d) for d in s["sumario"]],
@@ -166,6 +172,7 @@ def dispositivo(db: Leitor, ref: str, *, hoje: date | None = None) -> Dispositiv
         redacoes_anteriores=[desquebrar(a) for a in anteriores],
         anterior=DispositivoResumo.model_validate(r["anterior"]) if r["anterior"] else None,
         proximo=DispositivoResumo.model_validate(r["proximo"]) if r["proximo"] else None,
+        cita=[NormaResumo.model_validate(c) for c in r["cita"]],
         notas=notas,
     )
 

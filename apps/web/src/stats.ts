@@ -112,12 +112,60 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
 
   const [cNr, nr] = cartao(t('est.naoResolvidos.titulo'), t('est.naoResolvidos.sub'))
   raiz.append(cNr)
-  const linhasNr = e.nao_resolvidos_detalhe.map((x) => ({
-    rotulo: `${x.upstream.replace('normas-', '').toUpperCase()} · ${x.campo.replace('_', ' ')} · ${tDinamico(`est.naoResolvidos.${x.tipo}`, x.tipo)}`,
+  const linhasNr = e.nao_resolvidos_por_categoria.map((x) => ({
+    rotulo: tDinamico(`est.naoResolvidos.categoria.${x.categoria}`, x.categoria),
     valor: x.n,
-    extra: t('est.naoResolvidos.ocorrencias', { n: fmt.format(x.ocorrencias) }),
+    extra: t('est.naoResolvidos.exemplos', { n: fmt.format(x.ocorrencias), ex: x.exemplos.slice(0, 3).join('; ') }),
   }))
-  graficos.push(() => barras(nr, linhasNr, { rotuloLargura: 260, cabecalho: [t('est.naoResolvidos.cabecalho'), t('est.naoResolvidos.valor')] }))
+  const graficoNr = el('div')
+  nr.append(graficoNr)
+  if (e.nao_resolvidos_acervo.length) {
+    const lista = el('details', { class: 'tabela' })
+    lista.append(
+      el('summary', {}, t('est.naoResolvidos.listaAcervo', { n: fmt.format(e.nao_resolvidos_acervo.length) })),
+      tabelaSimples(
+        [t('est.naoResolvidos.id'), t('est.naoResolvidos.em'), t('est.naoResolvidos.campo')],
+        e.nao_resolvidos_acervo.map((x) => [
+          el('code', {}, x.id),
+          el('a', { href: linkNorma(x.em), title: x.em }, x.titulo ?? x.em),
+          x.campo.replace('_', ' '),
+        ]),
+      ),
+    )
+    nr.append(lista)
+  }
+  graficos.push(() =>
+    barras(graficoNr, linhasNr, { rotuloLargura: 260, cabecalho: [t('est.naoResolvidos.cabecalho'), t('est.naoResolvidos.valor')] }),
+  )
+
+  const [cCit, cit] = cartao(t('est.citacoes.titulo'), t('est.citacoes.sub'), true)
+  raiz.append(cCit)
+  const kpisCit = el('div', { class: 'kpis' })
+  kpisCit.append(
+    kpi(t('est.citacoes.kpiCitacoes'), e.citacoes_texto),
+    kpi(t('est.citacoes.kpiDispositivos'), e.citacoes_texto_dispositivos),
+    kpi(t('est.citacoes.kpiPares'), e.citacoes_texto_pares),
+    kpi(t('est.citacoes.kpiNovos'), e.citacoes_texto_pares_novos),
+    kpi(t('est.citacoes.kpiPendentes'), e.citacoes_pendentes),
+  )
+  const graficoCit = el('div')
+  cit.append(kpisCit, graficoCit)
+  if (e.citacoes_pendentes_lista.length) {
+    const lista = el('details', { class: 'tabela' })
+    lista.append(
+      el('summary', {}, t('est.citacoes.listaPendentes', { n: fmt.format(e.citacoes_pendentes_lista.length) })),
+      tabelaSimples(
+        [t('est.citacoes.id'), t('est.citacoes.dispositivos'), t('est.citacoes.exemplo')],
+        e.citacoes_pendentes_lista.map((x) => {
+          const [norma, chave] = x.exemplo.split('#')
+          return [el('code', {}, x.id), x.dispositivos, el('a', { href: `${linkNorma(norma)}`, title: x.exemplo }, `${norma}${chave ? ` · ${chave}` : ''}`)]
+        }),
+      ),
+    )
+    cit.append(lista)
+  }
+  const linhasCit = Object.entries(e.citacoes_texto_por_alvo).map(([k, v]) => ({ rotulo: tDinamico(`est.citacoes.alvo.${k}`, k), valor: v }))
+  graficos.push(() => barras(graficoCit, linhasCit, { rotuloLargura: 260, cabecalho: [t('est.citacoes.cabecalho'), t('est.citacoes.kpiCitacoes')] }))
 
   const [cDisp, disp] = cartao(t('est.dispositivos.titulo'), t('est.dispositivos.sub'), true)
   raiz.append(cDisp)

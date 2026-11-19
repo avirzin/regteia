@@ -1,6 +1,6 @@
 from .enums import Estado, Relacao
 from .graph import Dispositivo, Divisao, Norma, TipoDispositivo
-from .ids import CORPUS_PREFIXES, FEDERAL_PREFIXES, KNOWN_PREFIXES, nome_federal, prefixo
+from .ids import CORPUS_PREFIXES, EXTERNAL_PREFIX, FEDERAL_PREFIXES, KNOWN_PREFIXES, nome_federal, prefixo
 from .upstream import (
     ArestaRow,
     EstadoRow,
@@ -13,6 +13,7 @@ from .upstream import (
 
 __all__ = [
     "CORPUS_PREFIXES",
+    "EXTERNAL_PREFIX",
     "FEDERAL_PREFIXES",
     "KNOWN_PREFIXES",
     "ArestaRow",

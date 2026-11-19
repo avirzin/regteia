@@ -1,8 +1,8 @@
 # Graph model
 
-Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 7 in progress (norms, Dispositivos,
-article-level amendments read from `atualizacoes`, `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md)),
-and the norm page that shows them).
+Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 8 (norms, Dispositivos, article-level
+amendments read from `atualizacoes`, `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md)), the norm
+page, and citations read from article text ([ADR 0004](decisions/0004-citacoes-no-texto.md))).
 
 ## Nodes
 
@@ -52,6 +52,7 @@ A unit of a file-backed norm's text, built by `ingest/parse/dispositivos.py` at 
 | `contexto` | enclosing headings: `CAPÍTULO II · DAS DEFINIÇÕES › Seção I · …` |
 | `revogado` | the article only exists struck through, or reads just "(Revogado…)" |
 | `redacoes_anteriores` | list of struck-through (superseded) wording, in document order; absent when none |
+| `cita_sem_alvo` | BCB/CVM IDs its text cites that match no norm yet (ADR 0004); linked at the end of every run once the norm exists; absent when none |
 | `ingestao` | id of the run that last wrote it; a re-split norm loses the Dispositivos that run did not write |
 
 A norm turned back into a stub loses its Dispositivos.
@@ -78,11 +79,12 @@ norm is read again. `id` `<norma>#atualizacao-<ordem>`.
 | `motivo` | why, for everything but `dispositivos`; for `falha`/`parcial`, the clause that could not be read |
 | `ausentes`, `ausentes_tipo`, `ausentes_desde`, `ausentes_detalhe` | parallel lists: targets that matched no Dispositivo (`art-90-a`), their type, start date and detail (`""` if none) |
 
-### `(:Ingestao {fonte, sha, em, arquivos, modo, divisao, atualizacoes})`
+### `(:Ingestao {fonte, sha, em, arquivos, modo, divisao, atualizacoes, citacoes})`
 
 One per upstream. `sha` is the last *successfully* loaded commit; the next incremental run diffs from it. `divisao`
 is the splitter version (`dispositivos.VERSAO`) that built the Dispositivos, `atualizacoes` the parser version
-(`atualizacoes.VERSAO`); a different version of either forces a full reload.
+(`atualizacoes.VERSAO`), `citacoes` the body-text citation extractor version (`citacoes_texto.VERSAO`); a different
+version of any of them forces a full reload.
 
 ### `(:Migracao {nome, em})`
 
@@ -101,6 +103,11 @@ norm's `atualizacoes` (ADR 0002). The amending norm gets a stub if it is outside
 | `a_partir_de` | `Date` or null. Can be in the future. Null: the entry gives no date (in force from the amending norm's own date) |
 | `detalhe` | what inside the article, as written: `inciso III, alíneas "b", "c"`, `caput; §§ 2º a 4º` |
 | `entrada` | `ordem` of the `Atualizacao` it came from |
+
+`(:Dispositivo)-[:CITA {fonte: "texto", ordem}]->(:Norma)`: a norm named in the Dispositivo's text (latest wording,
+without the portal's amendment notes), read by `ingest/parse/citacoes_texto.py` (ADR 0004). `ordem` is the order of
+first mention (1000 for one linked later, when its norm appeared). A cited federal law or `ext:` norm gets a stub; a
+BCB/CVM ID with no norm gets no node and waits in `cita_sem_alvo`. Rebuilt with the norm's Dispositivos.
 
 `(:Norma)-[:REVOGA|REVOGA_PARCIAL|ALTERA|CITA|REGULAMENTA|CONJUNTA]->(:Norma)` from `grafo/arestas.jsonl`. The type
 is upstream's `relacao` in upper case.
@@ -133,3 +140,8 @@ itens 11,133, artigos 9,512, vazio 36.
 `atualizacoes` (2026-11-18, normas-bcb@39a59edc; the CVM corpus has none): 18,860 entries (norma 13,642,
 dispositivos 3,935, ausente 819, parcial 293, nota 57, falha 114) and 10,301 article-level `ALTERA` edges (nova_redacao
 5,461, revogacao 2,879, inclusao 1,961), 3,625 with a start date, 69 starting after the load date.
+
+Citations in article text (2026-11-19, normas-bcb@808e7ca7, normas-cvm@d3972fbd): 157,786 edges from 80,003
+Dispositivos (corpus norms 111,961, federal laws 41,809, other bodies 3,967, BCB/CVM stubs 49); 137,834 norm pairs,
+80,772 of them with no norm-level edge upstream; 392 waiting in `cita_sem_alvo`. Stubs went from 3,005 to 4,251,
+mostly federal laws (step 9 turns them into real nodes).

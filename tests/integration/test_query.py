@@ -254,3 +254,42 @@ def test_texto_norma(db):
     art91 = next(d for d in r.dispositivos if d.id.endswith("#art-91"))
     assert art91.texto.startswith("Art. 91") and art91.redacoes_anteriores
     assert relacoes(db, "bcb:resolucao-bcb:589").nos[0].grupo == "BCB"
+
+
+def test_citacoes_no_texto(db):
+    n = norma(db, "Resolução BCB 520")
+    grupos = {g.direcao: g for g in n.citacoes_texto}
+    # IN BCB 701 cites Res. BCB 520 in its preamble and arts. 1, 2, 3, 4 and 6: six articles, the first five listed
+    in701 = next(c for c in grupos["entrada"].itens if c.norma.id == "bcb:instrucao-normativa-bcb:701")
+    assert in701.total == 6 and len(in701.dispositivos) == 5
+    assert [d.id.split("#")[1] for d in in701.dispositivos] == ["preambulo", "art-1", "art-2", "art-3", "art-4"]
+    # Res. BCB 520 cites Lei 14.478/2022 in its preamble and arts. 3 and 88; federal laws are stubs named from the ID
+    lei = next(c for c in grupos["saida"].itens if c.norma.id == "lei:14478-2022")
+    assert lei.total == 3 and lei.norma.externo and lei.norma.titulo == "Lei nº 14.478/2022"
+
+    d = dispositivo(db, "bcb:instrucao-normativa-bcb:712#art-1")
+    assert {c.id for c in d.cita} == {
+        "bcb:instrucao-normativa-bcb:330",
+        "bcb:instrucao-normativa-bcb:701",
+        "bcb:resolucao-bcb:520",
+    }
+    assert next(c for c in d.cita if c.id == "bcb:resolucao-bcb:520").estado == "alterada"  # status travels along
+    t = texto_norma(db, "IN BCB 712")
+    assert {c.id for c in next(x for x in t.dispositivos if x.id.endswith("#art-1")).cita} == {c.id for c in d.cita}
+
+
+def test_estatisticas_citacoes_e_nao_resolvidos(db):
+    e = estatisticas(db)
+    assert e.citacoes_texto == sum(e.citacoes_texto_por_alvo.values()) > 100
+    assert e.citacoes_texto_por_alvo["acervo"] > 0 and e.citacoes_texto_por_alvo["lei_federal"] > 0
+    assert 0 < e.citacoes_texto_pares_novos <= e.citacoes_texto_pares
+    assert e.citacoes_pendentes > 0
+    assert any(p.id == "bcb:resolucao-cmn:454" for p in e.citacoes_pendentes_lista)
+    # the fixtures' three: a section of the rural credit manual and two IDs no norm has
+    cats = {c.categoria: c for c in e.nao_resolvidos_por_categoria}
+    assert set(cats) == {"manual", "acervo"}
+    assert (cats["manual"].n, cats["manual"].ocorrencias, cats["manual"].exemplos) == (1, 144, ["Cita MCR 2-2-20."])
+    assert [(x.id, x.em) for x in e.nao_resolvidos_acervo] == [
+        ("bcb:carta-circular:11283", "bcb:circular:925"),
+        ("cvm:comunicado-conjunto-bcb:17-1987", "cvm:instrucao:68"),
+    ]

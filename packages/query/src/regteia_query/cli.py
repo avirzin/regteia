@@ -69,6 +69,14 @@ def fmt_norma(r: NormaDetalhe) -> str:
             out.append(f"  {_linha(v.norma, desde)}")
         if g.total > len(g.itens):
             out.append(f"  ... e mais {g.total - len(g.itens)} (use `regteia relacoes`)")
+    for c in r.citacoes_texto:
+        titulo = "Cita no texto dos artigos" if c.direcao == "saida" else "Citada no texto dos artigos de"
+        out.append(f"\n{titulo} ({c.total}):")
+        for x in c.itens:
+            onde = ", ".join(d.rotulo for d in x.dispositivos) + (" ..." if x.total > len(x.dispositivos) else "")
+            out.append(f"  {_linha(x.norma)}  [{x.total}: {onde}]")
+        if c.total > len(c.itens):
+            out.append(f"  ... e mais {c.total - len(c.itens)}")
     if r.sumario:
         artigos = [d for d in r.sumario if d.tipo == "artigo"]
         revogados = sum(d.revogado for d in r.sumario)
@@ -90,6 +98,8 @@ def fmt_dispositivo(r: DispositivoDetalhe) -> str:
     out += ["", r.texto or "(sem texto: dispositivo revogado)"]
     for i, ant in enumerate(r.redacoes_anteriores, 1):
         out += ["", f"--- Redação anterior {i} (riscada no portal) ---", ant]
+    if r.cita:
+        out += ["", "Cita:", *(f"  {_linha(c)}" for c in r.cita)]
     nav = [f"anterior: {r.anterior.rotulo}" if r.anterior else "", f"próximo: {r.proximo.rotulo}" if r.proximo else ""]
     if any(nav):
         out += ["", "  ".join(x for x in nav if x)]
@@ -132,7 +142,12 @@ def fmt_estatisticas(r: Estatisticas) -> str:
         + ", ".join(f"{k} {v:,}" for k, v in r.stubs_por_prefixo.items()),
         f"Relações: {r.arestas:,}  (com data 'desde': {r.arestas_com_desde:,})",
         "  " + ", ".join(f"{k} {v:,}" for k, v in r.arestas_por_relacao.items()),
-        f"Referências não resolvidas: {r.nao_resolvidos:,}",
+        f"Referências não resolvidas (upstream): {r.nao_resolvidos:,}  "
+        + ", ".join(f"{c.categoria} {c.n:,}" for c in r.nao_resolvidos_por_categoria),
+        f"Citações no texto dos artigos: {r.citacoes_texto:,} em {r.citacoes_texto_dispositivos:,} dispositivos  "
+        + ", ".join(f"{k} {v:,}" for k, v in r.citacoes_texto_por_alvo.items())
+        + f"; {r.citacoes_texto_pares:,} pares de normas, {r.citacoes_texto_pares_novos:,} sem relação no upstream"
+        + f"; {r.citacoes_pendentes:,} a normas do BCB/CVM que o grafo não tem",
         f"Dispositivos: {r.dispositivos:,}  "
         + ", ".join(f"{k} {v:,}" for k, v in r.dispositivos_por_tipo.items())
         + f"; revogados {r.dispositivos_revogados:,}, com redação anterior {r.dispositivos_com_redacao_anterior:,}",

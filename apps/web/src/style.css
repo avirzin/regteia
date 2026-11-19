@@ -234,6 +234,15 @@ code { font-size: 12px; }
 .texto-disp { white-space: pre-wrap; max-width: 860px; }
 .texto-disp.riscado { text-decoration: line-through; color: var(--text-muted); margin-top: 6px; }
 details.dobrado, details.anteriores { margin-top: 6px; }
+.disp .cita { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); }
+.disp .cita .rotulo { color: var(--text-muted); }
+a.citada.revogada { text-decoration: line-through; color: var(--text-muted); }
+a.citada.externa { color: var(--text-secondary); }
+details.citacoes { margin: 6px 0; font-size: 13px; }
+details.citacoes summary { cursor: pointer; color: var(--text-secondary); }
+details.citacoes ul { margin: 6px 0; padding-left: 18px; max-height: 320px; overflow: auto; }
+details.citacoes li { margin: 2px 0; }
+details.citacoes .onde { color: var(--text-muted); font-size: 12px; }
 details.dobrado summary, details.anteriores summary { cursor: pointer; color: var(--text-secondary); font-size: 12px; }
 details.dobrado .texto-disp { color: var(--text-secondary); border-left: 2px solid var(--grid); padding-left: 10px; }
 .selo.revogada { color: var(--critico); border-color: currentColor; }
