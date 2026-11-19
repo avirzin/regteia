@@ -2,7 +2,7 @@
 import { tableFromIPC, type Table } from 'apache-arrow'
 import { t } from './i18n'
 
-export type Estado = 'vigente' | 'alterada' | 'revogada'
+export type Estado = 'vigente' | 'alterada' | 'revogada' | 'sem_informacao'
 
 export interface NormaResumo {
   id: string
@@ -21,6 +21,9 @@ export interface NormaResumo {
   ocr: boolean | null
   cancelada?: boolean | null
   estado_por?: string[]
+  estado_motivo?: string | null
+  urn?: string | null
+  baixado_em?: string | null
 }
 
 export interface GrupoRelacoes {

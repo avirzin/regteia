@@ -32,7 +32,8 @@
     "vigente": "In force",
     "alterada": "In force, amended",
     "revogada": "Revoked",
-    "externa": "Outside the corpus"
+    "externa": "Outside the corpus",
+    "sem_informacao": "Status not given"
   },
   "relacao": {
     "REVOGA": "Revokes",
@@ -108,7 +109,8 @@
     "estado": {
       "vigente": "In force",
       "alterada": "Amended",
-      "revogada": "Revoked"
+      "revogada": "Revoked",
+      "sem_informacao": "No information"
     },
     "orgao": {
       "titulo": "Status by issuer",
@@ -314,6 +316,8 @@
     "citadaNoTexto": "Cited in the articles' text of",
     "citacoesResumo": "{n} norms",
     "dispositivosQueCitam": "{n} provision(s)",
-    "citacoesNota": "Read from the text by rules: check the article before concluding it is about the cited norm."
+    "citacoesNota": "Read from the text by rules: check the article before concluding it is about the cited norm.",
+    "versaoCompilada": "Text version: {v} (compiled text, per normas.leg.br).",
+    "versaoOriginal": "Text version: {v}. This is the act as published: it may not reflect later amendments. Do not read it as the current wording."
   }
 }

@@ -29,7 +29,8 @@ from . import formatos
 
 INSTRUCOES = """\
 Grafo local da regulação financeira brasileira: todas as normas do BCB, do CMN e da CVM (cerca de 63 mil), divididas
-em artigos, com a situação de vigência e as relações entre elas (revoga, altera, cita, regulamenta).
+em artigos, com a situação de vigência e as relações entre elas (revoga, altera, cita, regulamenta), e os atos
+federais (leis, decretos, medidas provisórias) a que elas se referem, com texto quando a fonte o tem.
 
 Como usar:
 - `buscar` acha os artigos pelo assunto (busca por palavras em português); `panorama` lista as normas em vigor de um
@@ -48,7 +49,10 @@ Regras (não negociáveis):
 - Redações anteriores (riscadas no portal) não valem mais; use-as só para explicar o que mudou.
 - Não invente redação histórica: o grafo tem o texto atual e as redações riscadas, não o texto em cada data. Quando
   `vigencia_em` diz que o texto daquela data é indisponível, diga isso em vez de supor a redação.
-- Leis federais aparecem só como referência, sem texto.
+- Atos federais vêm de ctresb/leis (fonte oficial: normas.leg.br). Diga sempre a “versão do texto”: “original” é o ato
+  como publicado, sem alterações posteriores; nunca o apresente como redação vigente. SITUAÇÃO NÃO INFORMADA quer
+  dizer que a fonte não diz se o ato está em vigor: não o trate como vigente. Atos sem arquivo na fonte aparecem só
+  como referência, sem texto.
 - Sempre indique a fonte oficial e lembre que o texto é uma conversão automatizada e informativa, que não substitui
   o Diário Oficial nem os portais do BCB e da CVM.
 """

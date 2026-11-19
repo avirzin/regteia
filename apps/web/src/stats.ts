@@ -62,6 +62,7 @@ function desenhar(raiz: HTMLElement, e: Estatisticas): void {
     { chave: 'vigente', rotulo: t('est.estado.vigente'), cor: 'var(--estado-vigente)' },
     { chave: 'alterada', rotulo: t('est.estado.alterada'), cor: 'var(--estado-alterada)' },
     { chave: 'revogada', rotulo: t('est.estado.revogada'), cor: 'var(--estado-revogada)' },
+    { chave: 'sem_informacao', rotulo: t('est.estado.sem_informacao'), cor: 'var(--estado-sem-informacao)' },
   ]
   const [cOrg, org] = cartao(t('est.orgao.titulo'), t('est.orgao.sub'), true)
   raiz.append(cOrg)

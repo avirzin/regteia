@@ -12,11 +12,11 @@ from neo4j import Driver
 
 from .config import Settings, Upstream
 from .load import writer
-from .sources import git, normas_grafo
+from .sources import ctresb_leis, git, normas_grafo
 
 log = logging.getLogger(__name__)
 
-ADAPTERS = {"normas_grafo": normas_grafo.planejar}
+ADAPTERS = {"normas_grafo": normas_grafo.planejar}  # ctresb_leis is planned from the graph: see ingest_leis
 
 
 class AlreadyRunning(RuntimeError):
@@ -35,7 +35,30 @@ def lock(upstream_dir: Path) -> Iterator[None]:
         yield
 
 
+def ingest_leis(driver: Driver, settings: Settings, up: Upstream, *, full: bool) -> dict[str, int] | None:
+    """ctresb/leis: load the federal acts the BCB/CVM corpora point to. Run after them, since what to load comes from
+    the graph; so it is planned even when ctresb/leis didn't move (new BCB norms may cite new laws)."""
+    dest = settings.upstream_dir / up.name
+    t0 = time.monotonic()
+    git.ensure_clone(up, dest)
+    new_sha = git.update(dest, up.ref, shallow=up.shallow)
+    old_sha, carregadas_v = writer.ultima(driver, up.name)
+    full = full or old_sha is None or carregadas_v != writer.versoes()
+    carregadas = writer.carregadas(driver, up.name)
+    plano = ctresb_leis.planejar(dest, up, new_sha, writer.federais(driver), carregadas, full=full)
+    if not full and old_sha == new_sha and not plano.normas and plano.ids_vivos == set(carregadas):
+        log.info("%s: up to date at %s", up.name, new_sha[:12])
+        return None
+    log.info("%s: %s, %d act(s) to read", up.name, "full" if full else "incremental", len(plano.normas))
+    stats = writer.aplicar(driver, plano, run=uuid.uuid4().hex)
+    writer.registrar(driver, plano)
+    log.info("%s: loaded %s at %s in %.1fs", up.name, stats, new_sha[:12], time.monotonic() - t0)
+    return stats
+
+
 def ingest_upstream(driver: Driver, settings: Settings, up: Upstream, *, full: bool) -> dict[str, int] | None:
+    if up.adapter == "ctresb_leis":
+        return ingest_leis(driver, settings, up, full=full)
     planejar = ADAPTERS.get(up.adapter)
     if planejar is None:
         raise NotImplementedError(f"{up.name}: adapter {up.adapter!r} is not implemented yet")
@@ -43,7 +66,7 @@ def ingest_upstream(driver: Driver, settings: Settings, up: Upstream, *, full: b
     dest = settings.upstream_dir / up.name
     t0 = time.monotonic()
     git.ensure_clone(up, dest)
-    new_sha = git.update(dest, up.ref)
+    new_sha = git.update(dest, up.ref, shallow=up.shallow)
     old_sha, carregadas = writer.ultima(driver, up.name)
     atuais = writer.versoes()
 

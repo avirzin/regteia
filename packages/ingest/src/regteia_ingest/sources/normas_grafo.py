@@ -65,6 +65,10 @@ class Plano:
     arquivos: int = 0  # files changed upstream (all norm files on a full load)
     ids_vivos: set[str] = field(default_factory=set)  # norm ids backed by a file at `sha`
     root: Path | None = None  # the checkout, for reading bodies when writing
+    podar: bool = False  # turn this upstream's norms not in `ids_vivos` back into stubs even without `estados`
+    # cited norms outside the graph get stubs (BCB/CVM); for federal acts only citations of existing nodes are kept,
+    # or every law would pull in the laws it cites (ADR 0005)
+    cita_cria_stubs: bool = True
 
     def textos(self) -> Iterator[Texto]:
         """Each planned norm split into Dispositivos, with its `atualizacoes` read against that split and the norms its

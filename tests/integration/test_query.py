@@ -56,7 +56,8 @@ def test_revoked_and_stub_notes(db):
     rev = norma(db, "Circular 1")
     assert rev.norma.estado == "revogada" and rev.norma.situacao == "REVOGADA"
     assert rev.notas[0].startswith("REVOGADA")
-    lei = norma(db, "Lei nº 4.595/1964")
+    # a federal act ctresb/leis has no file for stays a stub
+    lei = norma(db, "lei:13810-2019")
     assert lei.norma.externo and lei.norma.situacao == "FORA DO ACERVO"
 
 
@@ -91,10 +92,11 @@ def test_relacoes_multi_hop(db):
 
 def test_estatisticas(db):
     e = estatisticas(db)
-    assert e.normas == 20 and e.arestas == 61 and e.nao_resolvidos == 3
-    assert sum(e.por_estado.values()) == 20
-    assert sum(s.total for s in e.por_serie) == 20
-    assert {i.fonte for i in e.ingestoes} == {"normas-bcb", "normas-cvm"}
+    assert e.normas == 20 + 5 and e.arestas == 61 and e.nao_resolvidos == 3  # 5 federal acts from ctresb/leis
+    assert sum(e.por_estado.values()) == 25 and e.por_estado["sem_informacao"] == 1  # Decreto 4.334/2002
+    assert sum(s.total for s in e.por_serie) == 25
+    assert {s.serie for s in e.por_serie if s.acervo in ("lei", "dec", "mpv")} == {"lei", "dec", "mpv"}
+    assert {i.fonte for i in e.ingestoes} == {"normas-bcb", "normas-cvm", "leis"}
     # atualizacoes: every fixture entry is stored and accounted for; Res. BCB 589 -> arts. 88 (2027) and 91 of 520
     assert e.atualizacoes == sum(e.atualizacoes_por_resultado.values()) == 8
     assert e.falhas_atualizacoes == e.atualizacoes_por_resultado.get("falha", 0)
@@ -222,8 +224,8 @@ def test_vigencia_em_revoked_norm(db):
     duvida = vigencia_em(db, "bcb:carta-circular:1", date(1970, 1, 1), hoje=HOJE)
     assert duvida.situacao == "indeterminada" and "pode ser anterior" in duvida.motivo
     assert vigencia_em(db, "bcb:carta-circular:1", date(1980, 1, 1), hoje=HOJE).situacao == "revogada"
-    # a federal law stub: no history, never a guess
-    assert vigencia_em(db, "Lei nº 4.595/1964", HOJE, hoje=HOJE).situacao == "indeterminada"
+    # a federal act stub: no history, never a guess
+    assert vigencia_em(db, "lei:13810-2019", HOJE, hoje=HOJE).situacao == "indeterminada"
 
 
 def test_vigencia_dispositivos_whole_norm_on_a_date(db):
@@ -265,7 +267,7 @@ def test_citacoes_no_texto(db):
     assert [d.id.split("#")[1] for d in in701.dispositivos] == ["preambulo", "art-1", "art-2", "art-3", "art-4"]
     # Res. BCB 520 cites Lei 14.478/2022 in its preamble and arts. 3 and 88; federal laws are stubs named from the ID
     lei = next(c for c in grupos["saida"].itens if c.norma.id == "lei:14478-2022")
-    assert lei.total == 3 and lei.norma.externo and lei.norma.titulo == "Lei nº 14.478/2022"
+    assert lei.total == 3 and not lei.norma.externo and lei.norma.titulo == "Lei nº 14.478 de 21/12/2022"
 
     d = dispositivo(db, "bcb:instrucao-normativa-bcb:712#art-1")
     assert {c.id for c in d.cita} == {
@@ -293,3 +295,37 @@ def test_estatisticas_citacoes_e_nao_resolvidos(db):
         ("bcb:carta-circular:11283", "bcb:circular:925"),
         ("cvm:comunicado-conjunto-bcb:17-1987", "cvm:instrucao:68"),
     ]
+
+
+def test_federal_acts_from_ctresb_leis(db):
+    # compiled text, not revoked: in force; the text version is always said
+    lei = norma(db, "Lei 4.595/1964")
+    assert not lei.norma.externo and lei.norma.estado == "vigente" and lei.norma.situacao == "VIGENTE"
+    assert lei.norma.versao_texto == "compilada (texto vigente)" and lei.norma.fonte_url.startswith(
+        "https://normas.leg.br"
+    )
+    assert lei.norma.urn == "urn:lex:br:federal:lei:1964-12-31;4595" and lei.divisao == "artigos"
+    # original text: flagged as possibly outdated
+    original = norma(db, "lei:14478-2022")
+    assert any("pode não refletir alterações posteriores" in n for n in original.notas)
+    # revogada: null in the source: never shown as in force
+    dec = norma(db, "dec:4334-2002")
+    assert dec.norma.estado == "sem_informacao" and dec.norma.situacao == "SITUAÇÃO NÃO INFORMADA"
+    assert dec.notas[0].startswith("SITUAÇÃO NÃO INFORMADA")
+    assert vigencia_em(db, "dec:4334-2002", HOJE, hoje=HOJE).situacao == "indeterminada"
+
+
+def test_federal_act_text_on_a_date(db):
+    # Lei 4.595, compiled text downloaded on 2026-10-13: that day's wording from then to today, unknown before
+    agora = vigencia_em(db, "Lei 4.595/1964, art. 1", HOJE, hoje=HOJE)
+    assert agora.situacao == "vigente" and agora.texto_na_data == "armazenado" and agora.texto
+    antes = vigencia_em(db, "Lei 4.595/1964, art. 1", date(2000, 1, 1), hoje=HOJE)
+    assert antes.situacao == "vigente" and antes.texto_na_data == "desconhecido" and antes.texto is None
+    assert "histórico de alterações" in antes.notas[0]
+    # Lei 14.478, original text: never that date's wording, even today
+    r = vigencia_em(db, "lei:14478-2022#art-1", HOJE, hoje=HOJE)
+    assert r.texto_na_data == "desconhecido" and r.texto is None and "como publicado" in r.notas[0]
+    todos = vigencia_dispositivos(db, "lei:14478-2022", HOJE, hoje=HOJE)
+    assert todos.dispositivos and all(
+        d.texto_na_data == "desconhecido" for d in todos.dispositivos if d.situacao == "vigente"
+    )

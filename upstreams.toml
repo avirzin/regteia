@@ -15,11 +15,13 @@ ref = "main"
 adapter = "normas_grafo"
 acervo = "cvm"
 
-# Roadmap step 9. Huge repo (~1.49M files): only the laws BCB/CVM edges point to will be checked out.
+# Federal acts (ADR 0005). Huge repo (~1.49M files): shallow, and only the acts the BCB/CVM norms point to are checked
+# out. Must come after the normas repos: what to load is read from the graph they built.
 [[upstream]]
 name = "leis"
 url = "https://github.com/ctresb/leis.git"
 ref = "main"
 adapter = "ctresb_leis"
 acervo = "lei"
-enabled = false
+sparse = ["/README.md"]
+shallow = true

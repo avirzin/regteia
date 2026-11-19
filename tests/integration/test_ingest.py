@@ -6,13 +6,14 @@ from pathlib import Path
 
 import pytest
 from neo4j import GraphDatabase
-from regteia_ingest.config import Settings, Upstream
+from regteia_ingest.config import Settings
 from regteia_ingest.load import writer
 from regteia_ingest.migrate import migrate
 from regteia_ingest.parse import atualizacoes, citacoes_texto, dispositivos
 from regteia_ingest.run import ingest
 
 from tests.conftest import commit_all
+from tests.integration.conftest import upstream
 
 pytestmark = pytest.mark.integration
 MIGRATIONS = Path(__file__).parents[2] / "db" / "migrations"
@@ -23,11 +24,8 @@ def env(neo4j_url, tmp_path, make_upstream):
     driver = GraphDatabase.driver(neo4j_url, auth=("neo4j", "test-password"), notifications_min_severity="OFF")
     driver.execute_query("MATCH (n) DETACH DELETE n")
     migrate(driver, MIGRATIONS)
-    remotes = {name: make_upstream(name) for name in ("normas-bcb", "normas-cvm")}
-    ups = [
-        Upstream(name=n, url=str(r), ref="main", adapter="normas_grafo", acervo=n.removeprefix("normas-"))
-        for n, r in remotes.items()
-    ]
+    remotes = {name: make_upstream(name) for name in ("normas-bcb", "normas-cvm", "leis")}
+    ups = [upstream(n, r) for n, r in remotes.items()]
     settings = Settings("", "", "", tmp_path / "clones", Path("unused"), MIGRATIONS)
     yield driver, settings, ups, remotes
     driver.close()
@@ -56,7 +54,8 @@ def test_full_load_and_idempotency(env):
     driver, settings, ups, _ = env
     assert ingest(driver, settings, ups, full=True)
     first = snapshot(driver)
-    assert first["normas"] == 20
+    assert first["normas"] == 20 + 5  # and 5 federal acts from ctresb/leis; its decoy (nothing points to it) is not
+    assert not q(driver, "MATCH (n:Norma {id: 'dec:96673-1988'}) RETURN n")
     assert first["arestas"] == 57 + 4
     assert first["nao_resolvidos"] == 3
 
@@ -74,8 +73,11 @@ def test_full_load_and_idempotency(env):
     assert alt["desde"].to_native() == date(2026, 10, 1)
     assert alt["fonte"] == "atualizacoes+referencias"
 
-    [lei] = q(driver, "MATCH (n:Norma {id: 'lei:4595-1964'}) RETURN n.externo AS e, n.acervo AS a")
+    # an edge endpoint outside every corpus is a stub; Lei 4.595 is a real node, read from ctresb/leis
+    [lei] = q(driver, "MATCH (n:Norma {id: 'lei:4728-1965'}) RETURN n.externo AS e, n.acervo AS a")
     assert lei == {"e": True, "a": "lei"}
+    [lei] = q(driver, "MATCH (n:Norma {id: 'lei:4595-1964'}) RETURN n.externo AS e, n.upstream AS u, n.estado AS s")
+    assert lei == {"e": False, "u": "leis", "s": "vigente"}
 
     # Dispositivos: every file-backed norm with text is split; Res. BCB 520 into preamble, 92 articles and annex
     assert first["soltos"] == 0
@@ -139,7 +141,7 @@ def test_full_load_and_idempotency(env):
     ]
     [lei] = q(
         driver,
-        "MATCH (:Dispositivo {id: 'bcb:resolucao-bcb:520#preambulo'})-[:CITA]->(n:Norma {id: 'lei:4595-1964'}) "
+        "MATCH (:Dispositivo {id: 'bcb:resolucao-bcb:520#preambulo'})-[:CITA]->(n:Norma {id: 'lei:12865-2013'}) "
         "RETURN n.externo AS externo",
     )
     assert lei["externo"] is True
@@ -258,4 +260,36 @@ def test_new_parser_version_forces_full_reload(env, campo, versao):
     assert ingest(driver, settings, ups, full=False)  # same upstream SHA: would be a no-op without the version check
     assert snapshot(driver) == before
     modos = q(driver, f"MATCH (i:Ingestao) RETURN i.modo AS m, i.{campo} AS v")
-    assert modos == [{"m": "full", "v": versao}] * 2
+    assert modos == [{"m": "full", "v": versao}] * 3
+
+
+def test_leis_follow_the_graph_and_upstream(env):
+    driver, settings, ups, remotes = env
+    assert ingest(driver, settings, ups, full=True)
+    leis = remotes["leis"]
+
+    # a BCB norm starts pointing at Decreto 96.673/1988 (as a new citation would): the next run loads it, even with
+    # ctresb/leis unchanged; it says NotInForce, so it is not in force
+    driver.execute_query(
+        "MATCH (b:Norma {id: 'bcb:resolucao-bcb:520'}) MERGE (d:Norma {id: 'dec:96673-1988'}) "
+        "ON CREATE SET d.externo = true, d.acervo = 'dec' MERGE (b)-[:CITA {fonte: 'teste'}]->(d)"
+    )
+    assert ingest(driver, settings, ups, full=False)
+    [d] = q(driver, "MATCH (n:Norma {id: 'dec:96673-1988'}) RETURN n.externo AS e, n.estado AS s, n.estado_motivo AS m")
+    assert d == {"e": False, "s": "revogada", "m": "sem vigência segundo os metadados de normas.leg.br"}
+
+    # nothing points to it any more: back to a stub, then pruned
+    driver.execute_query("MATCH (:Norma)-[r:CITA {fonte: 'teste'}]->() DELETE r")
+    assert ingest(driver, settings, ups, full=False)
+    assert not q(driver, "MATCH (n:Norma {id: 'dec:96673-1988'}) RETURN n")
+
+    # ctresb/leis changes a file: it is read again
+    f = leis / "federal/leis-ordinarias/2022/lei-14478-2022-12-21.md"
+    f.write_text(f.read_text(encoding="utf-8").replace('versao_texto: "original"', 'versao_texto: "compilada"'))
+    sha = commit_all(leis, "upstream change")
+    assert ingest(driver, settings, ups, full=False)
+    [lei] = q(driver, "MATCH (n:Norma {id: 'lei:14478-2022'}) RETURN n.versao_texto AS v, n.upstream_sha AS sha")
+    assert lei == {"v": "compilada", "sha": sha}
+    before = snapshot(driver)
+    assert ingest(driver, settings, ups, full=False)  # nothing moved: a no-op
+    assert snapshot(driver) == before

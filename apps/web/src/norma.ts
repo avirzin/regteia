@@ -33,6 +33,7 @@ const hojeISO = (): string => {
 const token = (nome: string) => getComputedStyle(document.documentElement).getPropertyValue(nome).trim()
 const situacaoRotulo = (s: Situacao) => tDinamico(`norma.situacao.${s}`, s)
 const estadoRotulo = (e: string) => tDinamico(`estado.${e}`, e)
+const FEDERAIS = new Set(['lei', 'lcp', 'ldl', 'del', 'dec', 'mpv'])
 const tipoEvento = (e: EventoVigencia['tipo']) => tDinamico(`norma.evento.${e}`, e)
 export const linkNorma = (id: string) => `#/norma/${encodeURIComponent(id)}`
 
@@ -54,7 +55,8 @@ function cabecalho(d: NormaDetalhe): HTMLElement {
   const estado = n.externo ? 'externa' : (n.estado ?? '')
   cab.append(el('h1', {}, n.titulo ?? n.id))
   const meta = el('p', { class: 'meta' })
-  meta.append(el('span', { class: `selo ${estado}` }, estadoRotulo(estado)))
+  const selo = estadoRotulo(estado) + (n.estado_motivo ? ` (${n.estado_motivo})` : '')
+  meta.append(el('span', { class: `selo ${estado}` }, selo))
   meta.append(document.createTextNode(`  ${n.id}${n.data ? ` · ${fmtData(n.data)}` : ''}${n.orgao ? ` · ${n.orgao}` : ''}`))
   cab.append(meta)
   const links = el('p', { class: 'links' })
@@ -63,6 +65,11 @@ function cabecalho(d: NormaDetalhe): HTMLElement {
   if (n.url_externa) links.append(document.createTextNode(' · '), linkSeguro(n.url_externa, t('visao.ondeEsta')))
   if (links.childNodes.length) cab.append(links)
   if (n.ementa) cab.append(el('p', { class: 'ementa' }, n.ementa))
+  if (n.versao_texto && FEDERAIS.has(n.acervo ?? '')) {
+    const compilada = n.versao_texto.startsWith('compilada')
+    const txt = t(compilada ? 'norma.versaoCompilada' : 'norma.versaoOriginal', { v: n.versao_texto })
+    cab.append(el('p', { class: compilada ? 'nota' : 'nota alerta' }, compilada ? txt : `⚠ ${txt}`))
+  }
   for (const nota of d.notas) cab.append(el('p', { class: 'nota' }, `⚠ ${nota}`))
   const rel = d.relacoes.filter((g) => g.direcao === 'entrada' && ['REVOGA', 'REVOGA_PARCIAL', 'ALTERA'].includes(g.tipo))
   for (const g of rel) {

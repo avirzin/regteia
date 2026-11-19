@@ -15,7 +15,7 @@ class Norma(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: NormaId
-    acervo: str  # "bcb" | "cvm": which corpus the file came from
+    acervo: str  # "bcb" | "cvm": which corpus the file came from; for federal acts the ID prefix ("lei", "dec")
     orgao: str
     tipo: str
     numero: str
@@ -23,7 +23,7 @@ class Norma(BaseModel):
     titulo: str
     ementa: str | None
     estado: Estado
-    revogada: bool  # frontmatter flag; `estado` (from grafo/estado.jsonl) is authoritative
+    revogada: bool | None  # frontmatter flag; `estado` (from grafo/estado.jsonl) is authoritative. None: unknown
     cancelada: bool
     fonte_url: str  # official source; always shown first
     caminho: str
@@ -37,6 +37,8 @@ class Norma(BaseModel):
     arquivo: str | None
     ocr: bool
     temas: list[str] | None
+    urn: str | None = None  # LexML, federal acts
+    estado_motivo: str | None = None  # why `estado` is what it is when the source says so ("Reeditada"), federal acts
 
 
 TipoDispositivo = Literal["preambulo", "artigo", "item", "anexo", "texto"]

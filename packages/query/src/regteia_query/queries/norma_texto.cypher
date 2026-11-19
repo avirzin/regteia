@@ -4,7 +4,7 @@ OPTIONAL MATCH (n)-[:TEM_DISPOSITIVO]->(d:Dispositivo)
 CALL (d) {
   OPTIONAL MATCH (d)-[r:CITA {fonte: 'texto'}]->(c:Norma)
   WITH r, c ORDER BY r.ordem
-  RETURN collect(c {.id, .titulo, .estado, .externo, .acervo}) AS cita
+  RETURN collect(c {.id, .titulo, .estado, .externo, .acervo, .estado_motivo}) AS cita
 }
 WITH n, d, cita ORDER BY d.ordem
 RETURN n.divisao AS divisao,

@@ -1,11 +1,12 @@
-"""Records as they appear in the upstream normas-bcb / normas-cvm repos.
+"""Records as they appear in the upstream repos (normas-bcb / normas-cvm, and ctresb/leis).
 
 Upstream publishes no schema, so these models *are* our understanding of it. They forbid unknown fields on purpose:
 if upstream adds or renames something, ingest must fail loudly instead of silently dropping data.
 """
 
+import json
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, field_validator
 
@@ -61,6 +62,13 @@ class EstadoRow(_Strict):
     caminho: str
     estado: Estado
     por: list[NormaId]
+
+    @field_validator("estado")
+    @classmethod
+    def _estado(cls, v: Estado) -> Estado:
+        if v == Estado.SEM_INFORMACAO:
+            raise ValueError("upstream's estado.jsonl uses vigente | alterada | revogada")
+        return v
 
     @field_validator("caminho")
     @classmethod
@@ -118,3 +126,35 @@ def parse_nao_resolvido(obj: dict) -> NaoResolvidoAlvo | NaoResolvidoPadrao:
     if "padrao" in obj:
         return NaoResolvidoPadrao.model_validate(obj)
     return NaoResolvidoAlvo.model_validate(obj)
+
+
+class LeiFrontmatter(BaseModel):
+    """The `---` header of one ctresb/leis file (federal acts). ADR 0005.
+
+    The repo adds provenance fields as it goes (audit hashes, recovery notes), so unknown fields are allowed here,
+    unlike normas-bcb/cvm; the ones we use are validated."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    titulo: str
+    tipo: str  # "Lei Ordinária", "Decreto", "Medida Provisória", "Decreto-Lei", "Lei Complementar", "Lei Delegada"
+    numero: str
+    data: date
+    ementa: str | None = None
+    revogada: bool | None  # null: the source doesn't say
+    versao_texto: str  # "compilada (texto vigente)", "original", "republicação/retificação", ...
+    urn: str  # LexML
+    fonte: str  # normas.leg.br
+    baixado_em: date
+    situacao: str | None = None  # medidas provisórias: "Reeditada", "Convertida em Lei", "Em vigor por força ..."
+    forca_legal_fonte: list[str] | None = None  # from normas.leg.br metadata: ["NotInForce"] or []
+
+    @field_validator("revogada", mode="before")
+    @classmethod
+    def _nulo(cls, v: Any) -> Any:
+        return None if v == "null" else v
+
+    @field_validator("forca_legal_fonte", mode="before")
+    @classmethod
+    def _lista_json(cls, v: Any) -> Any:
+        return json.loads(v) if isinstance(v, str) else v

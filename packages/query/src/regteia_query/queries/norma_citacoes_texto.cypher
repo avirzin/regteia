@@ -15,7 +15,7 @@ WITH direcao, m, count(d) AS total, collect(d {.id, .tipo, .rotulo, .revogado, .
 ORDER BY total DESC, coalesce(m.data, date('0001-01-01')) DESC, m.id
 WITH direcao, count(m) AS total,
      collect({
-       norma: m {.id, .titulo, .tipo, .orgao, .data, .estado, .externo, .acervo, .fonte_url, .cancelada},
+       norma: m {.id, .titulo, .tipo, .orgao, .data, .estado, .externo, .acervo, .fonte_url, .cancelada, .estado_motivo},
        total: total, dispositivos: dispositivos
      })[..$limite] AS itens
 RETURN direcao, total, itens

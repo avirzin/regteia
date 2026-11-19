@@ -76,7 +76,7 @@ def test_norma_dispositivo_relacoes_panorama(server):
     # BCB 589 only in the portal's note on who amended it, which is not a citation
     assert "Citada no texto de" in n and "`bcb:instrucao-normativa-bcb:701`: 6 dispositivo(s)" in n
     assert "Cita no texto" in n and "`lei:14478-2022`" in n
-    assert "**Normas citadas neste texto**: Lei nº 14.478/2022" in d3
+    assert "**Normas citadas neste texto**: Lei nº 14.478 de 21/12/2022" in d3
     assert "Normas citadas neste texto" not in d
     assert "Art. 91" in d and "Redação anterior 1" in d and "não vale mais" in d
     assert "6 de novembro de 2026" in d and d.rstrip().endswith(AVISO)

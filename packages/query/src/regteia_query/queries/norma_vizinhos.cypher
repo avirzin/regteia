@@ -10,7 +10,7 @@ ORDER BY coalesce(m.data, date('0001-01-01')) DESC, m.id
 WITH direcao, tipo, count(*) AS total,
      collect({
        norma: m {.id, .titulo, .tipo, .orgao, .data, .estado, .externo, .acervo, .ementa, .fonte_url, .url_arquivo,
-                 .url_externa, .versao_texto, .ocr, .cancelada},
+                 .url_externa, .versao_texto, .ocr, .cancelada, .estado_motivo, .urn, .baixado_em},
        desde: r.desde, fonte: r.fonte
      })[..$limite] AS itens
 RETURN direcao, tipo, total, itens

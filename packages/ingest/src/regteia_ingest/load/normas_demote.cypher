@@ -13,5 +13,5 @@ CALL (n) {
 SET n.externo = true
 REMOVE n.divisao, n.estado_por, n.orgao, n.tipo, n.numero, n.data, n.titulo, n.ementa, n.estado, n.revogada, n.cancelada, n.fonte_url,
        n.caminho, n.upstream, n.upstream_sha, n.url_arquivo, n.versao_texto, n.publicacao, n.responsavel, n.baixado_em,
-       n.arquivo, n.ocr, n.temas
+       n.arquivo, n.ocr, n.temas, n.urn, n.estado_motivo
 RETURN count(n) AS n

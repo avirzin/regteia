@@ -92,7 +92,8 @@ def _plural(m: re.Match[str]) -> bool:
 def _propria(norma: str, tipo: str, num: str) -> bool:
     """A mention with no issuer of the citing norm's own type and number: the heading "Resolução Nº 589" of Res.
     BCB 589 names itself, not Res. CMN 589."""
-    _, serie, numero = norma.split(":", 2)
+    partes = norma.split(":")
+    serie, numero = partes[-2], partes[-1]  # "bcb:resolucao-bcb:589"; a federal act's is its prefix: "lei:4595-1964"
     n = "-".join(str(int(p)) for p in num.replace(".", "").split("-"))
     return serie.startswith(tipo) and numero.split("-")[0] == n.split("-")[0]
 

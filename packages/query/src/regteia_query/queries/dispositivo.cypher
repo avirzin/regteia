@@ -5,7 +5,7 @@ OPTIONAL MATCH (n)-[:TEM_DISPOSITIVO]->(p:Dispositivo) WHERE p.ordem = d.ordem +
 CALL (d) {
   OPTIONAL MATCH (d)-[r:CITA {fonte: 'texto'}]->(c:Norma)
   WITH r, c ORDER BY r.ordem
-  RETURN collect(c {.id, .titulo, .tipo, .orgao, .data, .estado, .externo, .acervo, .fonte_url, .cancelada}) AS cita
+  RETURN collect(c {.id, .titulo, .tipo, .orgao, .data, .estado, .externo, .acervo, .fonte_url, .cancelada, .estado_motivo}) AS cita
 }
 RETURN d {.id, .tipo, .rotulo, .revogado, .contexto, .texto, .redacoes_anteriores} AS d, cita,
        a {.id, .tipo, .rotulo, .revogado, .contexto} AS anterior,

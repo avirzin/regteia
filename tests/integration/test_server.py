@@ -21,7 +21,7 @@ def client(leitor, tmp_path_factory):
 def test_saude_e_estatisticas(client):
     assert client.get("/api/saude").json()["status"] == "ok"
     e = client.get("/api/estatisticas").json()
-    assert e["normas"] == 20 and e["aviso"] == AVISO
+    assert e["normas"] == 25 and e["aviso"] == AVISO
 
 
 def test_norma(client):

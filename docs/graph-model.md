@@ -1,8 +1,9 @@
 # Graph model
 
-Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 8 (norms, Dispositivos, article-level
+Keep in sync with `packages/schema` and `db/migrations`. Status: roadmap step 9 (norms, Dispositivos, article-level
 amendments read from `atualizacoes`, `vigencia_em` over them ([ADR 0003](decisions/0003-vigencia-em.md)), the norm
-page, and citations read from article text ([ADR 0004](decisions/0004-citacoes-no-texto.md))).
+page, citations read from article text ([ADR 0004](decisions/0004-citacoes-no-texto.md)), and the federal acts they
+point to, from ctresb/leis ([ADR 0005](decisions/0005-atos-federais.md))).
 
 ## Nodes
 
@@ -10,19 +11,22 @@ page, and citations read from article text ([ADR 0004](decisions/0004-citacoes-n
 
 One node per norm ID (upstream IDs, unique constraint `norma_id`). Two kinds, told apart by `externo`:
 
-**File-backed** (`externo: false`): a norm with a Markdown file in normas-bcb or normas-cvm.
+**File-backed** (`externo: false`): a norm with a Markdown file in normas-bcb or normas-cvm, or a federal act with one
+in ctresb/leis (ADR 0005; those differ as noted).
 
 | Property | From | Notes |
 |---|---|---|
 | `id` | `grafo/estado.jsonl` | e.g. `bcb:resolucao-bcb:520`, `cvm:instrucao:68` |
-| `acervo` | `upstreams.toml` | `bcb` or `cvm` |
-| `estado` | `grafo/estado.jsonl` | `vigente` \| `alterada` \| `revogada`. **Authoritative** |
+| `acervo` | `upstreams.toml` | `bcb` or `cvm`; for federal acts the ID prefix (`lei`, `dec`, `mpv`…) |
+| `estado` | `grafo/estado.jsonl` | `vigente` \| `alterada` \| `revogada`. **Authoritative**. Federal acts: from the frontmatter (ADR 0005), plus `sem_informacao` when the source doesn't say; never shown as in force |
+| `estado_motivo` | frontmatter | federal acts: why the source says it's not in force (`Reeditada`, `Convertida em Lei`, `sem vigência segundo os metadados de normas.leg.br`) |
+| `urn` | frontmatter | federal acts: LexML URN (never the key) |
 | `estado_por` | `grafo/estado.jsonl` `por` | ids of the norms that revoked or amended it, per upstream; absent when none |
 | `caminho`, `upstream`, `upstream_sha` | ingest | which file, from which repo, at which commit |
 | `url_arquivo` | ingest | `<url>/blob/<upstream_sha>/<caminho>`: the exact file version (http(s) upstreams only) |
 | `fonte_url` | frontmatter `fonte` | official source; always shown first |
 | `orgao, tipo, numero, data, titulo, ementa` | frontmatter | `data` is a Neo4j `Date`; empty `ementa` stored as null |
-| `revogada` | frontmatter | upstream's own flag; may disagree with `estado`, which wins |
+| `revogada` | frontmatter | upstream's own flag; may disagree with `estado`, which wins. Null for federal acts whose source doesn't say |
 | `cancelada` | frontmatter | BCB only (161 norms) |
 | `versao_texto, publicacao, responsavel, baixado_em, arquivo` | frontmatter | `arquivo`: source PDF, if any |
 | `ocr` | frontmatter | `true` = text came from OCR; lower confidence |
@@ -33,7 +37,7 @@ One node per norm ID (upstream IDs, unique constraint `norma_id`). Two kinds, to
 **Stub** (`externo: true`): an edge endpoint with no file in our corpora: federal laws (`lei, lcp, ldl, del, dec,
 mpv`), other bodies (`ext`), and IDs upstream emitted but could not match to a file. Properties: `id`, `acervo`
 (the ID prefix), and `url_externa` when upstream knows where it lives. A stub becomes file-backed when its corpus is
-ingested (e.g. federal laws in step 9); a file-backed norm whose file disappears upstream is turned back into a stub
+ingested (federal acts the BCB/CVM corpora point to, when ctresb/leis has their file); a file-backed norm whose file disappears upstream is turned back into a stub
 (its edges stay). Stubs nothing points to are deleted.
 
 ### `(:Dispositivo)`

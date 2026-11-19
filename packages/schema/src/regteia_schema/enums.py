@@ -5,6 +5,8 @@ class Estado(StrEnum):
     VIGENTE = "vigente"
     ALTERADA = "alterada"
     REVOGADA = "revogada"
+    #: federal acts only (ADR 0005): ctresb/leis doesn't say whether it is in force. Never shown as in force.
+    SEM_INFORMACAO = "sem_informacao"
 
 
 class Relacao(StrEnum):

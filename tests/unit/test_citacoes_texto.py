@@ -100,3 +100,9 @@ def test_the_portals_amendment_notes_are_not_citations():
     assert _bcb("nos termos da Circular nº 3.978, de 2020. (Redação dada pela Resolução BCB nº 589, de 2026.)") == [
         "bcb:circular:3978"
     ]
+
+
+def test_federal_act_naming_itself():
+    # Lei 4.595's own heading, in the text of Lei 4.595 (ctresb/leis)
+    assert citacoes("LEI Nº 4.595, DE 31 DE DEZEMBRO DE 1964\n\nDispõe sobre", "lei:4595-1964", "lei") == []
+    assert citacoes("nos termos da Lei nº 6.385, de 7 de dezembro de 1976", "lei:4595-1964", "lei") == ["lei:6385-1976"]

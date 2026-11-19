@@ -6,6 +6,7 @@ from collections.abc import Callable
 from datetime import date
 
 from pydantic import BaseModel
+from regteia_schema import FEDERAL_PREFIXES
 
 from .db import Leitor
 from .estatisticas import estatisticas
@@ -53,6 +54,8 @@ def _links(n: NormaResumo) -> list[str]:
         out.append(f"  Arquivo (versão exata): {n.url_arquivo}")
     if n.url_externa:
         out.append(f"  Onde está: {n.url_externa}")
+    if n.versao_texto and n.acervo in FEDERAL_PREFIXES:
+        out.append(f"  Versão do texto: {n.versao_texto}")
     return out
 
 

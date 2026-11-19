@@ -13,6 +13,7 @@ from regteia_query.modelos import (
     Subgrafo,
     Vigencia,
 )
+from regteia_schema import FEDERAL_PREFIXES
 from regteia_schema.env import AVISO
 
 TEXTO_MAX = 20_000  # characters of one Dispositivo in `dispositivo`
@@ -48,8 +49,14 @@ def ficha(n: NormaResumo) -> str:
         linhas.append(f"Texto convertido (versão exata): {n.url_arquivo}")
     if n.url_externa:
         linhas.append(f"Onde está: {n.url_externa}")
-    if n.versao_texto and "original" in n.versao_texto.lower():
+    if (
+        n.versao_texto
+        and not n.versao_texto.startswith("compilada")
+        and (n.acervo in FEDERAL_PREFIXES or "original" in n.versao_texto.lower())
+    ):
         linhas.append(f"Versão do texto: {n.versao_texto} (pode não refletir alterações posteriores)")
+    elif n.versao_texto and n.acervo in FEDERAL_PREFIXES:
+        linhas.append(f"Versão do texto: {n.versao_texto}")
     if n.ocr:
         linhas.append("Texto obtido por OCR: pode conter erros de reconhecimento.")
     return "\n".join(linhas)

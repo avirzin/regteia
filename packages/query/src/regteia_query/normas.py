@@ -70,8 +70,15 @@ def _notas(n: NormaResumo, grupos: list[GrupoRelacoes], hoje: date) -> list[str]
         notas.append(
             "Norma fora dos acervos carregados: aparece apenas porque outras normas se referem a ela; sem texto."
         )
+    elif n.estado == "revogada" and n.situacao.startswith("FORA DE VIGOR"):
+        notas.append(f"{n.situacao}: este ato não está em vigor.")
     elif n.estado == "revogada":
         notas.append("REVOGADA: esta norma não está em vigor.")
+    elif n.estado == "sem_informacao":
+        notas.append(
+            "SITUAÇÃO NÃO INFORMADA: a fonte (ctresb/leis) não diz se este ato está em vigor. Não o trate como "
+            "vigente sem conferir na fonte oficial."
+        )
     elif n.estado == "alterada":
         notas.append(
             "Alterada: o texto armazenado é o texto consolidado atual do portal, já com as alterações incorporadas."

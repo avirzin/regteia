@@ -28,6 +28,9 @@ class NormaResumo(BaseModel):
     ocr: bool | None = None
     cancelada: bool | None = None
     estado_por: list[str] = Field(default_factory=list)  # titles of the norms upstream says revoked/amended this one
+    estado_motivo: str | None = None  # federal acts: why the source says it's not in force ("Reeditada")
+    urn: str | None = None  # federal acts: LexML
+    baixado_em: date | None = None  # when upstream downloaded the text
 
     @model_validator(mode="after")
     def _nome_dos_stubs(self) -> "NormaResumo":
@@ -40,7 +43,14 @@ class NormaResumo(BaseModel):
     def situacao(self) -> str:
         if self.externo:
             return "FORA DO ACERVO"
-        return {"vigente": "VIGENTE", "alterada": "VIGENTE, ALTERADA", "revogada": "REVOGADA"}[self.estado]
+        if self.estado == "revogada" and self.estado_motivo and not self.estado_motivo.lower().startswith("revogad"):
+            return f"FORA DE VIGOR ({self.estado_motivo})"
+        return {
+            "vigente": "VIGENTE",
+            "alterada": "VIGENTE, ALTERADA",
+            "revogada": "REVOGADA",
+            "sem_informacao": "SITUAÇÃO NÃO INFORMADA",
+        }[self.estado]
 
     @property
     def situacao_detalhada(self) -> str:
@@ -284,6 +294,7 @@ class SerieContagem(BaseModel):
     total: int
     vigente: int = 0
     alterada: int = 0
+    sem_informacao: int = 0
     revogada: int = 0
 
 

@@ -16,6 +16,8 @@ A change with no date at all makes the answer `indeterminada` rather than a gues
 import re
 from datetime import date, timedelta
 
+from regteia_schema import FEDERAL_PREFIXES
+
 from .db import Leitor
 from .modelos import (
     DispositivoResumo,
@@ -151,6 +153,8 @@ def _norma_em(n: NormaResumo, data: date, hoje: date, revogacoes: list[EventoVig
     notas: list[str] = []
     if n.data and data < n.data:
         return "nao_vigente", f"A norma é de {_data(n.data)}: ainda não existia em {_data(data)}.", notas
+    if n.estado == "sem_informacao":
+        return "indeterminada", "A fonte (ctresb/leis) não informa se este ato está em vigor.", notas
     if n.data and data - n.data < INICIO_RECENTE:
         notas.append(
             f"O início da vigência considerado é a data da norma ({_data(n.data)}); o grafo não lê a cláusula de "
@@ -170,7 +174,9 @@ def _norma_em(n: NormaResumo, data: date, hoje: date, revogacoes: list[EventoVig
         if primeira and data >= primeira.data:
             return "revogada", f"Revogada por {_por(primeira)} a partir de {_data(primeira.data)}.", notas
         if data >= hoje:
-            return "revogada", "O portal mostra a norma revogada.", notas
+            if n.estado_motivo and not n.estado_motivo.lower().startswith("revogad"):
+                return "revogada", f"Fora de vigor segundo a fonte: {n.estado_motivo}.", notas
+            return "revogada", "A fonte mostra a norma revogada.", notas
         if primeira and not sem_data:
             return (
                 "vigente",
@@ -253,6 +259,27 @@ def _texto_na_data(situacao: str, no_texto: bool, eventos: list[EventoVigencia])
     return "desconhecido" if any(not e.aplicado for e in eventos) else "armazenado"
 
 
+def _sem_historico(n: NormaResumo, data: date, hoje: date) -> str | None:
+    """Why a federal act's stored text may not be the wording of `data`, or None when it is. The graph has no
+    amendment history for federal acts (ctresb/leis has none): a compiled text is that date's only from the day it
+    was downloaded to today; an original text is the act as published, with no later amendment (ADR 0005)."""
+    if n.acervo not in FEDERAL_PREFIXES:
+        return None
+    versao = n.versao_texto or "?"
+    if versao.startswith("compilada"):
+        if n.baixado_em and n.baixado_em <= data <= hoje:
+            return None
+        quando = f" em {_data(n.baixado_em)}" if n.baixado_em else ""
+        return (
+            f"Texto compilado obtido{quando}; o grafo não tem o histórico de alterações deste ato, então não sabe "
+            f"se a redação de {_data(data)} era a mesma."
+        )
+    return (
+        f"Texto “{versao}”: o ato como publicado, sem as alterações posteriores, que o grafo não tem. Não o trate "
+        f"como a redação de {_data(data)}."
+    )
+
+
 def _nao_lidas(rows: list[dict], data: date) -> list[str]:
     """A note when entries of the norm's history that weren't read down to the article may postdate `data`."""
     duvidosas = [
@@ -333,7 +360,11 @@ def vigencia_em(db: Leitor, ref: str, data: date, *, hoje: date | None = None) -
 
     texto = None
     texto_na_data = _texto_na_data(situacao, d is not None, proprios)
-    if situacao == "vigente" and d is None:
+    federal = _sem_historico(n, data, hoje) if texto_na_data == "armazenado" else None
+    if federal:
+        texto_na_data = "desconhecido"
+        notas.insert(0, federal)
+    elif situacao == "vigente" and d is None:
         notas.append(
             "O histórico registra este dispositivo, mas o texto publicado no portal ainda não o traz: o grafo não tem "
             "a redação dele."
@@ -432,6 +463,9 @@ def vigencia_dispositivos(db: Leitor, ref: str, data: date, *, hoje: date | None
     itens = sumario[0]["sumario"] if sumario else []
     existentes = {d["id"] for d in itens}
     faltando = list(dict.fromkeys(e.dispositivo.split("#", 1)[1] for e in ausentes if e.dispositivo not in existentes))
+    federal = _sem_historico(n, data, hoje) if situacao == "vigente" else None
+    if federal:
+        notas.insert(0, federal)
     dispositivos = []
     for chave, d in _em_ordem(itens, faltando):
         did = f"{n.id}#{chave}"
@@ -447,7 +481,11 @@ def vigencia_dispositivos(db: Leitor, ref: str, data: date, *, hoje: date | None
                 revogado_hoje=bool(d and d["revogado"]),
                 situacao=sit,
                 motivo=mot,
-                texto_na_data=_texto_na_data(sit, d is not None, evs),
+                texto_na_data=(
+                    "desconhecido"
+                    if federal and sit == "vigente" and d is not None
+                    else _texto_na_data(sit, d is not None, evs)
+                ),
                 eventos=len(evs),
                 posteriores=sum(1 for e in evs if not e.aplicado),
             )

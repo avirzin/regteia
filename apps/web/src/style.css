@@ -23,6 +23,7 @@
   --estado-vigente: #2a78d6;
   --estado-alterada: #86b6ef;
   --estado-revogada: #c3c2b7;
+  --estado-sem-informacao: #d9a520; /* federal acts whose source doesn't say: check before relying on them */
 
   /* single-series bars */
   --serie-1: #2a78d6;
@@ -52,6 +53,7 @@
     --estado-vigente: #3987e5;
     --estado-alterada: #184f95;
     --estado-revogada: #52514e;
+    --estado-sem-informacao: #b8860b;
     --serie-1: #3987e5;
   }
 }
@@ -75,6 +77,7 @@
   --estado-vigente: #3987e5;
   --estado-alterada: #184f95;
   --estado-revogada: #52514e;
+  --estado-sem-informacao: #b8860b;
   --serie-1: #3987e5;
 }
 
@@ -248,6 +251,8 @@ details.dobrado .texto-disp { color: var(--text-secondary); border-left: 2px sol
 .selo.revogada { color: var(--critico); border-color: currentColor; }
 .selo.nao_vigente, .selo.indeterminada { color: var(--text-primary); border-style: dashed; }
 .selo.vigente { color: var(--estado-vigente); border-color: currentColor; }
+.selo.sem_informacao { color: var(--text-primary); border-style: dashed; }
+.cab-norma .nota.alerta { border-left: 3px solid var(--estado-sem-informacao); padding-left: 8px; }
 .selo.futuro { margin-left: 6px; border-style: dashed; }
 
 .linha-tempo ol.eventos { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--grid); }

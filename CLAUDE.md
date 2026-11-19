@@ -104,7 +104,7 @@ the next run. Upstream publishes at minute 41 of each hour; exact timing doesn't
 |---|---|---|
 | `github.com/BrunooMoniz/normas-bcb` | 60,977 BCB/CMN norms, updated hourly | code MIT, texts are official acts |
 | `github.com/BrunooMoniz/normas-cvm` | 2,606 CVM norms | code MIT, texts are official acts |
-| `github.com/ctresb/leis` | federal laws the BCB/CVM norms rest on (planned, roadmap step 9) | code MIT, texts are official acts |
+| `github.com/ctresb/leis` | federal laws the BCB/CVM norms rest on (shallow, sparse: only the referenced files) | code MIT, texts are official acts |
 
 Counts as of 2026-11-11. Upstream is maintained by one person and has no published schema, so **validate every
 record against `schema` and fail loudly on mismatch**. Never silently skip.
@@ -148,7 +148,7 @@ Graph files in each repo's `grafo/` folder:
 {"id":"bcb:carta-circular:11283","arestas":1,"em":"bcb:circular:925","campo":"normas_vinculadas"}
 ```
 
-`estado` ∈ `vigente | alterada | revogada`. `fonte` is the upstream field the edge came from, sometimes joined
+`estado` ∈ `vigente | alterada | revogada` (upstream's values; ingest rejects anything else in `estado.jsonl`). `fonte` is the upstream field the edge came from, sometimes joined
 with `+` (e.g. `atualizacoes+referencias`).
 
 **IDs: reuse upstream IDs as primary keys.** Examples: `bcb:resolucao-bcb:520`, `cvm:instrucao:68`,
@@ -168,7 +168,11 @@ Same Markdown + frontmatter format, plus a `urn` (LexML) field and `fonte` on no
 - **`versao_texto` varies:** `"compilada (texto vigente)"` (consolidated current text, e.g. Lei 4.595/1964) or
   `"original"` (as first published, e.g. Lei 14.478/2022). Store it, and surface it in every answer that quotes a
   law. Never present `original` text as current wording.
-- It updates irregularly (days apart), not hourly.
+- **Status comes from the frontmatter, conservatively** (ADR 0005): `revogada: true`, an MP marked "Reeditada" or
+  "Convertida em Lei", or `forca_legal_fonte: ["NotInForce"]` → `revogada` (with the reason in `estado_motivo`);
+  `revogada: false` → `vigente`; `revogada: null` → `sem_informacao`, never shown as in force.
+- It updates irregularly (days apart), not hourly. The clone is shallow, and the upstream runs after the normas repos
+  because what to load is read from the graph.
 
 ## Graph model (v1). Full reference in docs/graph-model.md
 
@@ -220,6 +224,8 @@ silently. Test cases for this parser must come from real upstream strings.
 - **Never present a revoked norm or provision as in force.** Every answer from `query` carries `estado` and
   `fonte_url` (the official source link).
 - `estado = "alterada"` means the stored text is the portal's current consolidated text. Say so.
+- `estado = "sem_informacao"` (federal acts only) means the source doesn't say whether the act is in force. Never
+  treat it as in force; `vigencia_em` answers `indeterminada`.
 - **Known limit:** we have status over time, but not text over time. We only have the text as currently published
   (plus upstream's git history since late 2026). `vigencia_em` can say *whether* an article applied on a date. It
   cannot return the article's *wording* on that date unless we have that version. Never make up historical text.

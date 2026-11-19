@@ -64,6 +64,18 @@ def ultima(driver: Driver, fonte: str) -> tuple[str | None, tuple[int | None, ..
     return r["sha"], (r["divisao"], r["atualizacoes"], r["citacoes"])
 
 
+def federais(driver: Driver) -> set[str]:
+    """Federal acts the BCB/CVM corpora point to: what ctresb/leis is read for (ADR 0005)."""
+    recs = driver.execute_query(cypher("federais_referenciados"), {"prefixos": sorted(FEDERAL_PREFIXES)}, routing_="r")
+    return {r["id"] for r in recs.records}
+
+
+def carregadas(driver: Driver, upstream: str) -> dict[str, str]:
+    """This upstream's file-backed norms: id -> the commit each was read at."""
+    recs = driver.execute_query(cypher("normas_carregadas"), {"upstream": upstream}, routing_="r").records
+    return {r["id"]: r["sha"] for r in recs}
+
+
 def versoes() -> tuple[int, ...]:
     """The current (splitter, atualizacoes parser, citation extractor) versions, as `ultima` returns them."""
     return dispositivos.VERSAO, atualizacoes.VERSAO, citacoes_texto.VERSAO
@@ -103,11 +115,19 @@ def _entradas(norma: str, leituras: list[atualizacoes.Leitura]) -> tuple[list[di
     return entradas, alteram
 
 
-def _citacoes(citacoes: dict[str, list[str]]) -> list[dict]:
-    """Rows for citacoes_create, one per (Dispositivo, cited norm)."""
+def _citacoes(citacoes: dict[str, list[str]], cria_stubs: bool = True) -> list[dict]:
+    """Rows for citacoes_create, one per (Dispositivo, cited norm). Without `cria_stubs` a citation of a norm not in
+    the graph is not kept at all (federal acts: ADR 0005)."""
     externos = FEDERAL_PREFIXES | {EXTERNAL_PREFIX}
     return [
-        {"dispositivo": d, "alvo": a, "ordem": k, "acervo": prefixo(a), "externo": prefixo(a) in externos}
+        {
+            "dispositivo": d,
+            "alvo": a,
+            "ordem": k,
+            "acervo": prefixo(a),
+            "externo": cria_stubs and prefixo(a) in externos,
+            "espera": cria_stubs,
+        }
         for d, alvos in citacoes.items()
         for k, a in enumerate(alvos)
     ]
@@ -170,7 +190,7 @@ def _dispositivos(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
         e, a = _entradas(t.norma, t.atualizacoes)
         entradas += e
         alteram += a
-        citam += _citacoes(t.citacoes)
+        citam += _citacoes(t.citacoes, plano.cita_cria_stubs)
         if tamanho >= TEXTO_POR_LOTE or len(lote) >= 1_000:
             gravar()
     gravar()
@@ -191,6 +211,7 @@ def aplicar(driver: Driver, plano: Plano, run: str) -> dict[str, int]:
         rows = [{"id": e.id, "estado": e.estado.value, "caminho": e.caminho, "por": e.por} for e in plano.estados]
         n = _write(driver, "estados_set", rows)
         _expect("estados_set (norms in estado.jsonl missing from the graph)", n, len(rows))
+    if plano.estados is not None or plano.podar:
         stats["normas_removidas"] = _write(driver, "normas_demote", upstream=up, vivos=sorted(plano.ids_vivos))
 
     if plano.arestas is not None:

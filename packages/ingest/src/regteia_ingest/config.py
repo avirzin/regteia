@@ -42,6 +42,7 @@ class Upstream(BaseModel):
     adapter: str
     acervo: str
     sparse: list[str] | None = None
+    shallow: bool = False  # clone and fetch only the latest commit (ctresb/leis: its history is huge)
     enabled: bool = True
 
 

@@ -32,7 +32,8 @@
     "vigente": "Vigente",
     "alterada": "Vigente, alterada",
     "revogada": "Revogada",
-    "externa": "Fora do acervo"
+    "externa": "Fora do acervo",
+    "sem_informacao": "Situação não informada"
   },
   "relacao": {
     "REVOGA": "Revoga",
@@ -108,7 +109,8 @@
     "estado": {
       "vigente": "Vigente",
       "alterada": "Alterada",
-      "revogada": "Revogada"
+      "revogada": "Revogada",
+      "sem_informacao": "Sem informação"
     },
     "orgao": {
       "titulo": "Situação por órgão",
@@ -314,6 +316,8 @@
     "citadaNoTexto": "Citada no texto dos artigos de",
     "citacoesResumo": "{n} normas",
     "dispositivosQueCitam": "{n} dispositivo(s)",
-    "citacoesNota": "Lidas do texto por regras: confira o artigo antes de concluir que ele trata da norma citada."
+    "citacoesNota": "Lidas do texto por regras: confira o artigo antes de concluir que ele trata da norma citada.",
+    "versaoCompilada": "Versão do texto: {v} (texto compilado, segundo normas.leg.br).",
+    "versaoOriginal": "Versão do texto: {v}. É o ato como publicado: pode não refletir alterações posteriores. Não o leia como a redação vigente."
   }
 }

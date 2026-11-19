@@ -15,6 +15,21 @@ MIGRATIONS = Path(__file__).parents[2] / "db" / "migrations"
 AUTH = ("neo4j", "test-password")
 
 
+def upstream(name: str, repo: Path) -> Upstream:
+    """The upstreams.toml entry for a fixture repo (same adapters and options as the real ones)."""
+    if name == "leis":
+        return Upstream(
+            name=name,
+            url=str(repo),
+            ref="main",
+            adapter="ctresb_leis",
+            acervo="lei",
+            sparse=["/README.md"],
+            shallow=True,
+        )
+    return Upstream(name=name, url=str(repo), ref="main", adapter="normas_grafo", acervo=name.removeprefix("normas-"))
+
+
 @pytest.fixture(scope="session")
 def neo4j_url():
     from testcontainers.neo4j import Neo4jContainer
@@ -31,12 +46,12 @@ def leitor(neo4j_url, tmp_path_factory):
     driver.execute_query("MATCH (n) DETACH DELETE n")
     migrate(driver, MIGRATIONS)
     ups = []
-    for name in ("normas-bcb", "normas-cvm"):
+    for name in ("normas-bcb", "normas-cvm", "leis"):
         repo = tmp / name
         shutil.copytree(FIXTURES / name, repo)
         for cmd in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "f"]):
             subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *cmd], cwd=repo, check=True)
-        ups.append(Upstream(name=name, url=str(repo), ref="main", adapter="normas_grafo", acervo=name[7:]))
+        ups.append(upstream(name, repo))
     assert ingest(driver, Settings("", "", "", tmp / "clones", Path("x"), MIGRATIONS), ups, full=True)
     driver.execute_query("CALL db.awaitIndexes(60)")
     driver.close()
