@@ -1,4 +1,4 @@
-# Regteia
+<img src="images/regteia_logo.png" alt="Regteia" width="300">
 
 **Brazilian financial regulation as a graph, on your own machine.** Which norm revokes, amends, cites or regulates
 which, down to the article, and what was in force on a given date. Explore it in the browser, or ask your local AI
@@ -74,13 +74,22 @@ flowchart LR
 At `http://127.0.0.1:8080`:
 
 - **Overview:** the whole corpus as a GPU-rendered force graph ([cosmos.gl](https://github.com/cosmosgl/graph)),
-  colored by issuing body (CMN, BCB, CVM, federal law), with filters by body, relation and decade.
+  colored by issuing body (CMN, BCB, CVM, federal law), with filters by body, status, relation and decade.
 - **Statistics:** norms per series and per body, in force / amended / revoked, relations by type and origin, norms
   per decade, unresolved references, parse failures, and the last update (upstream commit, time, files changed).
   All computed live from the database.
-- **Norm page** (roadmap step 7): text by article, amendment timeline, an "in force on [date]" switch, and the
-  norm's neighborhood (what it amends, what amended it, what it rests on) laid out left to right by date. Until then,
-  clicking a norm in the overview opens a side panel with its status, official source and direct relations.
+- **Norm page:** text by article with the norms each article cites, what amended or revoked it, an "in force on
+  [date]" switch, and the norm's neighborhood (what it amends, what amended it, what it rests on) laid out left to
+  right by date.
+
+The overview: about 23,000 norms and 72,000 relations (comunicados hidden), sized by number of relations.
+
+![Overview graph of the corpus, colored by issuing body](images/sc01.png)
+
+The norm page for Resolução BCB 520: status, who amended it and from when, the articles' text with the norms they
+cite, and its neighborhood graph (the federal laws it rests on to the left, later norms to the right).
+
+![Norm page of Resolução BCB 520](images/sc02.png)
 
 Frontend development: `uv run regteia-server` (API on :8080), then `cd apps/web && npm install && npm run dev`
 (http://127.0.0.1:5173, proxies `/api`).
@@ -100,7 +109,9 @@ docker compose up -d                      # Neo4j, updater, web app
 docker compose logs -f updater            # first run clones upstream and loads everything (~2 min + download)
 ```
 
-To force a full reload later: `docker compose exec updater regteia-ingest full`.
+The first run clones normas-bcb, normas-cvm and the cited part of ctresb/leis, then keeps them current every hour.
+See [Where the data comes from](#where-the-data-comes-from-and-how-it-stays-current). To force a full reload later:
+`docker compose exec updater regteia-ingest full`.
 
 Then open the web app. Everything answers only on your machine (`127.0.0.1`), while the stack is running:
 
@@ -175,11 +186,47 @@ Use absolute paths (`which docker`): desktop apps don't inherit your shell's `PA
 Try: "Quais são as modalidades de prestadora de serviços de ativos virtuais?", "O que mudou no art. 91 da
 Resolução BCB 520?", "Quais normas alteraram a Resolução CMN 4.966 e o que elas mudaram?".
 
-## Updates
+## Where the data comes from, and how it stays current
 
-The `updater` container runs an incremental ingest every hour: it reads the upstream git diff since the last loaded
-commit and upserts only the norms that changed. If your machine was asleep, the next run catches up. The loaded
-commit is recorded in the database, so every answer can be traced to an exact upstream version. GitHub Actions
+Regteia doesn't crawl the official portals. It reads public git repositories, listed in `upstreams.toml`, and never
+writes to them:
+
+| Repository | What it gives | How it is cloned |
+|---|---|---|
+| [BrunooMoniz/normas-bcb](https://github.com/BrunooMoniz/normas-bcb) | BCB and CMN norms | full history, no file contents until needed |
+| [BrunooMoniz/normas-cvm](https://github.com/BrunooMoniz/normas-cvm) | CVM norms | same |
+| [ctresb/leis](https://github.com/ctresb/leis) | federal laws, decrees and MPs | shallow, and only the files BCB/CVM norms cite |
+
+**First run.** The `updater` clones the repositories into the `upstream` Docker volume and loads everything:
+
+- **From normas-bcb and normas-cvm** it takes:
+  - each norm's text and header (title, body, date, summary, official link);
+  - its status (`grafo/estado.jsonl`);
+  - the norm-to-norm relations (`grafo/arestas.jsonl`);
+  - the references to other repositories (`grafo/externos.jsonl`);
+  - the references upstream couldn't resolve (`grafo/nao_resolvidos.jsonl`).
+- **From that same data, Regteia builds** the layers upstream doesn't have:
+  - the split into articles;
+  - article-level amendments with start dates, parsed from the `atualizacoes` header;
+  - "in force on date X";
+  - the citations found in article text.
+- **ctresb/leis is read last:** the graph decides which federal acts are needed, and only those files are fetched.
+
+**Updates, every hour.**
+- The normas repositories are refreshed hourly by their maintainer's crawler, which commits each new or changed norm.
+- The `updater` container runs `regteia-ingest incremental` once an hour. For each repository it:
+  1. runs `git fetch`;
+  2. compares the new commit with the last one loaded (stored in Neo4j as `(:Ingestao {fonte, sha})`);
+  3. reads only the files in `git diff last..new`: changed norms are re-parsed, and deleted ones are removed;
+  4. records the new commit only after a successful load. A failed run changes nothing and is retried the next
+     hour.
+- A change on the BCB or CVM portal reaches your graph in about 1–2 hours.
+- If your machine was asleep, the next run catches up on every commit it missed. If upstream rewrote its history,
+  it reloads everything.
+- Every norm keeps the commit and file it came from, so any answer can be traced to an exact upstream version.
+
+Watch it with `docker compose logs -f updater`. Neo4j is never the source of truth:
+`docker compose exec updater regteia-ingest full` rebuilds the whole graph from the repositories. GitHub Actions
 only runs the tests.
 
 ## Known limits
@@ -205,7 +252,7 @@ only runs the tests.
 ## Credits and license
 
 - Norm texts and the base relation graph: [normas-bcb](https://github.com/BrunooMoniz/normas-bcb) and
-  [normas-cvm](https://github.com/BrunooMoniz/normas-cvm) by Bruno Moniz. Federal laws:
+  [normas-cvm](https://github.com/BrunooMoniz/normas-cvm). Federal laws:
   [ctresb/leis](https://github.com/ctresb/leis).
 - Code: MIT.
 - Norm texts are official acts and are not protected by copyright in Brazil (Lei nº 9.610/1998, art. 8º, IV).
