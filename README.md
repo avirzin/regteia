@@ -69,6 +69,19 @@ flowchart LR
 | `packages/server` | FastAPI: JSON API, graph export, serves the web app |
 | `apps/web` | Overview graph (cosmos.gl), stats dashboard, per-norm pages (Cytoscape.js) |
 
+### Stack
+
+| Layer | Technology |
+|---|---|
+| Database | [Neo4j](https://neo4j.com/) 5.26 Community: graph store, Cypher, Portuguese full-text index |
+| Backend | Python 3.12, [uv](https://docs.astral.sh/uv/) workspace, Pydantic v2, official `neo4j` driver |
+| Ingest | git (blobless, sparse and shallow clones), regex and rule-based parsers, no LLM |
+| API | [FastAPI](https://fastapi.tiangolo.com/), graph export as [Apache Arrow](https://arrow.apache.org/) |
+| AI access | Official [MCP](https://modelcontextprotocol.io/) Python SDK, stdio transport |
+| Frontend | [Vite](https://vite.dev/) + TypeScript, [cosmos.gl](https://github.com/cosmosgl/graph) (GPU force graph), [Cytoscape.js](https://js.cytoscape.org/) + `cytoscape-dagre`, plain SVG charts |
+| Runtime | Docker Compose: `neo4j`, `updater`, `server`, all bound to `127.0.0.1` |
+| Quality | pytest + [testcontainers](https://testcontainers.com/) (a real Neo4j, no mocks), ruff, GitHub Actions CI |
+
 ## The web app
 
 At `http://127.0.0.1:8080`:
@@ -128,6 +141,24 @@ In the Neo4j Browser you can write Cypher, for example everything that amended R
 MATCH (n:Norma {id: "bcb:resolucao-bcb:520"})<-[r:ALTERA|REVOGA_PARCIAL]-(m:Norma)
 RETURN m.titulo, type(r), r.desde
 ```
+
+Or draw a norm's neighborhood. Resolução BCB 520 with:
+- the norms that cite, regulate or amend it;
+- its articles amended by Resolução BCB 589;
+- the federal laws its articles cite.
+
+```cypher
+MATCH p = (:Norma {id: 'bcb:resolucao-bcb:520'})-[]-(:Norma)
+RETURN p
+UNION
+MATCH p = (:Norma {id: 'bcb:resolucao-bcb:520'})-[:TEM_DISPOSITIVO]->(:Dispositivo)<-[:ALTERA]-(:Norma)
+RETURN p
+UNION
+MATCH p = (:Norma {id: 'bcb:resolucao-bcb:520'})-[:TEM_DISPOSITIVO]->(:Dispositivo)-[:CITA]->(:Norma)
+RETURN p
+```
+
+![Neo4j Browser showing the neighborhood of Resolução BCB 520](images/sc03.png)
 
 From the terminal:
 
