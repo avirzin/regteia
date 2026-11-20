@@ -5,7 +5,8 @@ which, down to the article, and what was in force on a given date. Explore it in
 assistant.
 
 > [!WARNING]
-> Pre-alpha. The repository is being scaffolded; interfaces below are the target design.
+> Early stage. Everything below works end to end on a local machine, but interfaces and the graph model may still
+> change.
 
 > [!IMPORTANT]
 > Automated conversion, for information only. It does **not** replace the Diário Oficial da União or the official
@@ -89,8 +90,8 @@ At `http://127.0.0.1:8080`:
 - **Overview:** the whole corpus as a GPU-rendered force graph ([cosmos.gl](https://github.com/cosmosgl/graph)),
   colored by issuing body (CMN, BCB, CVM, federal law), with filters by body, status, relation and decade.
 - **Statistics:** norms per series and per body, in force / amended / revoked, relations by type and origin, norms
-  per decade, unresolved references, parse failures, and the last update (upstream commit, time, files changed).
-  All computed live from the database.
+  per decade, citations found in article text, unresolved references by cause, parse failures, and the last update
+  (upstream commit, time, files changed). All computed live from the database.
 - **Norm page:** text by article with the norms each article cites, what amended or revoked it, an "in force on
   [date]" switch, and the norm's neighborhood (what it amends, what amended it, what it rests on) laid out left to
   right by date.
@@ -113,13 +114,13 @@ a locale file is missing a key. Corpus data (titles, ementas, series names, upst
 
 ## Quick start
 
-Requirements: Docker, [uv](https://docs.astral.sh/uv/).
+Requirements: Docker. [uv](https://docs.astral.sh/uv/) only if you want to run the CLI or MCP from the host.
 
 ```bash
 git clone https://github.com/<owner>/regteia && cd regteia
 cp .env.example .env                      # set NEO4J_PASSWORD
 docker compose up -d                      # Neo4j, updater, web app
-docker compose logs -f updater            # first run clones upstream and loads everything (~2 min + download)
+docker compose logs -f updater            # first run clones upstream and loads everything (a few minutes + download)
 ```
 
 The first run clones normas-bcb, normas-cvm and the cited part of ctresb/leis, then keeps them current every hour.
@@ -130,7 +131,7 @@ Then open the web app. Everything answers only on your machine (`127.0.0.1`), wh
 
 | What | Address |
 |---|---|
-| Web app (overview graph, statistics) | http://127.0.0.1:8080 |
+| Web app (overview graph, statistics, norm pages) | http://127.0.0.1:8080 |
 | JSON API docs | http://127.0.0.1:8080/api/docs |
 | Neo4j Browser | http://127.0.0.1:7474 |
 | Neo4j connection (Browser, drivers) | `bolt://127.0.0.1:7687`, user `neo4j`, password `NEO4J_PASSWORD` from `.env` |
@@ -169,7 +170,7 @@ uv run regteia relacoes "Resolução BCB 589" --profundidade 2 --tipo altera
 uv run regteia buscar "custódia de ativos virtuais segregação"   # matches article text, shows excerpts
 uv run regteia dispositivo "Resolução BCB 520, art. 91"            # one article: text, earlier wording, notes
 uv run regteia estatisticas
-uv run regteia vigencia "bcb:resolucao-bcb:520#art-88" 2027-01-02   # planned (roadmap step 7)
+uv run regteia vigencia "bcb:resolucao-bcb:520#art-88" 2027-01-02   # in force on that date? is the text that date's?
 ```
 
 Without uv on the host, the same CLI is in the updater container: `docker compose exec updater regteia norma "ICVM 400"`.
@@ -178,7 +179,7 @@ Add `--json` before the subcommand for machine-readable output.
 ## Using it from your AI assistant (local MCP)
 
 The MCP server runs only on your machine, launched by your client over stdio (no port, no network listener). It is
-read-only: five fixed tools over the query layer, no "run Cypher" tool. The Docker stack must be running.
+read-only: six fixed tools over the query layer, no "run Cypher" tool. The Docker stack must be running.
 
 **Claude Code**, no uv needed (runs the server inside the `server` container, still over stdio):
 
@@ -211,8 +212,7 @@ Use absolute paths (`which docker`): desktop apps don't inherit your shell's `PA
 | `dispositivo` | One article (or annex, item): latest wording, chapter and section, revoked or not, struck-through earlier wording, future-date warnings |
 | `relacoes` | Multi-hop traversal from a norm, filtered by relation type and depth |
 | `panorama` | The norms in force on a topic (no revoked norms, no comunicados) |
-
-`vigencia_em` ("was this article in force on date X?") comes with roadmap step 7.
+| `vigencia_em` | Was a norm or article in force on a date (past or future), and is the stored text that date's wording |
 
 Try: "Quais são as modalidades de prestadora de serviços de ativos virtuais?", "O que mudou no art. 91 da
 Resolução BCB 520?", "Quais normas alteraram a Resolução CMN 4.966 e o que elas mudaram?".
@@ -265,7 +265,13 @@ only runs the tests.
 - **Validity over time, not text over time.** We know *whether* an article applied on a date, but we only have its
   *current* wording (plus history since late 2026). Older wordings are not reconstructed.
 - Scanned PDFs went through OCR upstream; those norms are flagged (`ocr: true`) and may contain recognition errors.
-- 3,509 references could not be resolved upstream; reducing that number is on the roadmap.
+- 3,509 references could not be resolved upstream. Most point outside the BCB/CVM corpora (other bodies, manuals,
+  the Constitution); the statistics page groups them by cause.
+- **Federal acts** come only as far as ctresb/leis has them. Some texts are the `original` publication, not the
+  current consolidated wording (every answer says which). Acts whose source doesn't say whether they are in force
+  are shown as "situação não informada", never as in force. Cited acts with no file there stay as references
+  without text.
+- Citations in article text are found by rules, not read by a person: check the article before relying on one.
 - Upstream is maintained by a single person. Ingest validates every record and fails loudly if the format changes.
 
 ## Roadmap
@@ -276,14 +282,15 @@ only runs the tests.
 - [x] Web: statistics dashboard and overview graph
 - [x] Article split + Portuguese full-text search
 - [x] Local MCP server
-- [ ] Article-level amendments, `vigencia_em`, norm pages
-- [ ] Body-text citations; fewer unresolved references
-- [ ] Federal laws from ctresb/leis
+- [x] Article-level amendments, `vigencia_em`, norm pages
+- [x] Body-text citations; unresolved references classified
+- [x] Federal laws from ctresb/leis
+- [ ] Optional: own crawler as another source; embeddings only if keyword search and the graph fall short
 
 ## Credits and license
 
-- Norm texts and the base relation graph: [normas-bcb](https://github.com/BrunooMoniz/normas-bcb) and
-  [normas-cvm](https://github.com/BrunooMoniz/normas-cvm). Federal laws:
+- Norm texts and the base relation graph: both [normas-bcb](https://github.com/BrunooMoniz/normas-bcb) and
+  [normas-cvm](https://github.com/BrunooMoniz/normas-cvm), by Bruno Moniz. Federal laws:
   [ctresb/leis](https://github.com/ctresb/leis).
 - Code: MIT.
 - Norm texts are official acts and are not protected by copyright in Brazil (Lei nº 9.610/1998, art. 8º, IV).
